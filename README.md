@@ -7,4 +7,5 @@ This is a simple blog web application that allows* the admin to create, edit, an
 ## Features
 - Simple landing page to welcome guests
 - Basic authentication and permission levels for guests vs admin
+- Post creation page with storage to a database
 
