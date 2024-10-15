@@ -3,19 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Blog</title>
+    <title>The Wishmaster's Codex</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        body {
+            font-family: 'Garamond', serif; /* Consider using a whimsical font */
+            background-color: #f0f8ff; /* Light background for a dreamy effect */
+            color: #333;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            color: #8b4513; /* A rich brown for a fantasy feel */
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: flex-end; /* Aligns the navbar items to the right */
+            margin-bottom: 20px;
+        }
+
+        .navbar a {
+            text-decoration: none;
+            color: #8b4513; /* Matching link color */
+            font-weight: bold;
+            margin-left: 20px;
+        }
+
+        .posts {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* Responsive grid */
+            gap: 15px; /* Space between grid items */
+            animation: flow 1s ease-in-out; /* Flow animation */
+        }
+
+        .post {
+            background: #fff; /* White background for posts */
+            border: 2px solid #8b4513; /* Border to match theme */
+            border-radius: 10px; /* Rounded corners */
+            padding: 15px;
+            transition: transform 0.3s; /* Smooth scaling on hover */
+            text-decoration: none; /* Prevent underline on hover */
+            color: #8b4513; /* Set text color to brown */
+            min-height: 150px; /* Set a minimum height to ensure uniform size */
+            display: flex;
+            flex-direction: column; /* Stack title and date vertically */
+            justify-content: space-between; /* Distribute space evenly */
+        }
+
+        .post h2 {
+            margin: 0; /* Remove default margin */
+            flex-grow: 1; /* Allow title to take available space */
+            overflow-wrap: break-word; /* Allow long words to break and wrap onto the next line */
+            word-wrap: break-word; /* For older browsers */
+        }
+
+        .post p {
+            margin: 0; /* Remove default margin */
+        }
+
+        .post:hover {
+            transform: scale(1.05); /* Scale effect on hover */
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Optional shadow effect on hover */
+        }
+
+        @keyframes flow {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Welcome to My Blog!</h1>
-    <p>This is a simple blog web application.</p>
+    <h1>The Wishmaster's Codex</h1>
+    
+    <div class="navbar">
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('logout') }}">Logout</a>
+            {% if current_user.is_admin %}
+                <a href="{{ url_for('create_post') }}">Create Post</a>
+            {% endif %}
+        {% else %}
+            <a href="{{ url_for('login') }}">Login</a>
+        {% endif %}
+    </div>
 
-    {% if current_user.is_authenticated %}
-        <a href="{{ url_for('logout') }}">Logout</a>
-    {% else %}
-        <a href="{{ url_for('login') }}">Login</a>
-    {% endif %}
-
-    <!-- Display blog posts here -->
+    <div class="posts">
+        {% for post in posts %}
+            <a href="{{ url_for('view_post', post_id=post.id) }}" class="post"> <!-- Entire square is now clickable -->
+                <h2>{{ post.title }}</h2>
+                <p>Date: {{ post.date }}</p>
+            </a>
+        {% endfor %}
+    </div>
 </body>
 </html>

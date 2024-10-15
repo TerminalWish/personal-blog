@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ post.title }} - The Wishmaster's Codex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        body {
+            font-family: 'Garamond', serif; /* Whimsical font for fantasy feel */
+            background-color: #f0f8ff; /* Light background for a dreamy effect */
+            color: #333;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            color: #8b4513; /* Rich brown color */
+        }
+
+        .post-container {
+            max-width: 800px;
+            margin: 0 auto; /* Centering the content */
+            background: #fff; /* White background for the post */
+            border: 2px solid #8b4513; /* Matching border */
+            border-radius: 10px; /* Rounded corners */
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Shadow for depth */
+        }
+
+        .post-title {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .post-date {
+            font-size: 0.9em;
+            color: #555; /* Slightly muted color for the date */
+            margin-bottom: 20px;
+        }
+
+        .post-content {
+            font-size: 1.2em;
+            line-height: 1.6;
+        }
+
+        .post-content p {
+            text-indent: 30px; /* Indent the first line of each paragraph */
+            margin-top: 1em; /* Space between paragraphs */
+            margin-bottom: 1em; /* Space below paragraphs */
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: flex-end; /* Aligns the navbar items to the right */
+            margin-bottom: 20px;
+        }
+
+        .navbar a {
+            text-decoration: none;
+            color: #8b4513; /* Matching link color */
+            font-weight: bold;
+            margin-left: 20px;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center; /* Center the back link */
+            margin-top: 20px;
+            text-decoration: none;
+            color: #8b4513; /* Matching color */
+            font-weight: bold;
+        }
+
+        .back-link:hover {
+            text-decoration: underline; /* Underline on hover */
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('logout') }}">Logout</a>
+        {% else %}
+            <a href="{{ url_for('login') }}">Login</a>
+        {% endif %}
+
+        {% if current_user.is_authenticated and current_user.is_admin %}
+            <form action="{{ url_for('delete_post', post_id=post.id) }}" method="POST" style="margin-top: 20px;">
+                <button type="submit">Delete Post</button>
+            </form>
+        {% endif %}
+    </div>
+
+    <div class="post-container">
+        <h1 class="post-title">{{ post.title }}</h1>
+        <p class="post-date">Date: {{ post.date }}</p>
+        <div class="post-content">
+            {{ post.content | safe }} <!-- Render content as safe HTML -->
+        </div>
+    </div>
+
+    <a href="{{ url_for('home') }}" class="back-link">Back to Home</a>
+</body>
+</html>

@@ -3,7 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
+    <title>Login - The Wishmaster's Codex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        body {
+            font-family: 'Garamond', serif; /* Whimsical font for fantasy feel */
+            background-color: #f0f8ff; /* Light background for a dreamy effect */
+            color: #333;
+            padding: 20px;
+            text-align: center; /* Center the content */
+        }
+
+        h1 {
+            color: #8b4513; /* Rich brown color */
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        form {
+            background: #fff; /* White background for the form */
+            border: 2px solid #8b4513; /* Matching border */
+            border-radius: 10px; /* Rounded corners */
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Shadow for depth */
+            display: inline-block; /* Center the form */
+            max-width: 400px; /* Set a max width for the form */
+            width: 100%; /* Ensure it takes up full width of parent */
+        }
+
+        label {
+            display: block;
+            margin: 10px 0 5px; /* Spacing between labels and inputs */
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%; /* Full width for input fields */
+            padding: 10px;
+            margin-bottom: 15px; /* Space between inputs */
+            border: 1px solid #8b4513; /* Matching border color */
+            border-radius: 5px; /* Rounded corners */
+            box-sizing: border-box; /* Include padding and border in width */
+        }
+
+        input[type="submit"],
+        .return-home {
+            background-color: #8b4513; /* Matching background color */
+            color: white; /* White text */
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px; /* Rounded corners */
+            cursor: pointer; /* Pointer cursor on hover */
+            font-weight: bold;
+            margin-top: 10px; /* Space above button */
+            text-decoration: none; /* Remove underline from link */
+            display: inline-block; /* Make it inline-block */
+        }
+
+        input[type="submit"]:hover,
+        .return-home:hover {
+            background-color: #6f3c10; /* Darker shade on hover */
+        }
+
+        .messages {
+            color: red; /* Color for error messages */
+            margin-top: 10px; /* Space above messages */
+        }
+    </style>
 </head>
 <body>
     <h1>Login</h1>
@@ -16,13 +82,18 @@
         <br>
         <input type="submit" value="Login">
     </form>
+    <br>
+    <a href="{{ url_for('home') }}" class="return-home">Return to Home</a> <!-- Return to Home Button -->
+
     {% with messages = get_flashed_messages() %}
       {% if messages %}
-        <ul>
-        {% for message in messages %}
-          <li>{{ message }}</li>
-        {% endfor %}
-        </ul>
+        <div class="messages">
+          <ul>
+          {% for message in messages %}
+            <li>{{ message }}</li>
+          {% endfor %}
+          </ul>
+        </div>
       {% endif %}
     {% endwith %}
 </body>
