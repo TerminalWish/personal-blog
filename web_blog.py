@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from flask import Flask, render_template, redirect, url_for, flash, request
+from flask import Flask, render_template, redirect, url_for, flash, abort, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
 
@@ -52,7 +52,10 @@ users = {
 
 @app.route('/')
 def home():
-    return render_template('base.html')
+    # Query all posts from the database
+    posts = Post.query.all()  # Fetch all posts
+
+    return render_template('base.html', posts=posts)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -69,6 +72,13 @@ def login():
 
     return render_template('login.html')
 
+@app.route('/view_post/<int:post_id>')
+def view_post(post_id):
+    post = db.session.get(Post, post_id)
+    if post is None:
+        abort(404)
+    return render_template('view_post.html', post=post)
+
 
 ### Private Routing
 
@@ -79,6 +89,9 @@ def create_post():
         post_title = request.form['title']
         post_content = request.form['content']
         date_string = request.form['date']
+
+        # Edit content to preserve formatting using html
+        post_content = post_content.replace('\n', '<br>') # Replace new lines
 
         # Convert the date string to a python date object
         post_date = datetime.strptime(date_string, '%Y-%m-%d').date()
