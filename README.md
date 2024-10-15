@@ -6,6 +6,7 @@ This is a simple blog web application that allows* the admin to create, edit, an
 
 ## Features
 - Simple homepage that displays all of the current posts
-- Basic authentication and permission levels for guests vs admin
+- Authentication and permission levels for guests vs admin
 - Post creation page with storage to a database
 - Post viewing page to present a posts content to the user
+- Post deletion option to allow admin to delete posts

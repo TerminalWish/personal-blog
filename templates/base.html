@@ -87,6 +87,9 @@
     <div class="navbar">
         {% if current_user.is_authenticated %}
             <a href="{{ url_for('logout') }}">Logout</a>
+            {% if current_user.is_admin %}
+                <a href="{{ url_for('create_post') }}">Create Post</a>
+            {% endif %}
         {% else %}
             <a href="{{ url_for('login') }}">Login</a>
         {% endif %}

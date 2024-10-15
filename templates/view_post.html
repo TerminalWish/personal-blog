@@ -85,6 +85,12 @@
         {% else %}
             <a href="{{ url_for('login') }}">Login</a>
         {% endif %}
+
+        {% if current_user.is_authenticated and current_user.is_admin %}
+            <form action="{{ url_for('delete_post', post_id=post.id) }}" method="POST" style="margin-top: 20px;">
+                <button type="submit">Delete Post</button>
+            </form>
+        {% endif %}
     </div>
 
     <div class="post-container">
