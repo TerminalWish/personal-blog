@@ -1,5 +1,5 @@
 import unittest
-from web_blog import Post, app, db
+from web_blog import Post, Tag, app, db
 
 class TestWebBlog(unittest.TestCase):
 
@@ -15,14 +15,65 @@ class TestWebBlog(unittest.TestCase):
         cls.app = app.test_client()
         cls.app.testing = True
 
-    def test_view_post_valid_id(self):
-        # Login
-        response = self.app.post('/login', data={
-            'username': 'admin',
-            'password': 'password'
-        })
+    @classmethod
+    def login_as_admin(cls):
+        """Helper function to log in as the admin user."""
+        with cls.app:
+            cls.app.post('/login', data={
+                'username': 'admin',
+                'password': 'password'
+            })
 
-        self.assertEqual(response.status_code, 302)
+    @classmethod
+    def logout_user(cls):
+        """Helper function to log out the current user."""
+        with cls.app:
+            cls.app.get('/logout')
+
+    @classmethod
+    def create_test_tag(cls, test_tag_name):
+        """Helper function to create a tag in the tags table for testing"""
+        with app.app_context():
+            test_tag = Tag(name=test_tag_name)
+            db.session.add(test_tag)
+            db.session.commit()
+
+    @classmethod
+    def remove_test_tag(cls, test_tag_name):
+        """Helper function to remove a tag used in testing"""
+        with app.app_context():
+            test_tag = db.session.scalars(
+                db.select(Tag).filter_by(name=f'{test_tag_name}').limit(1)
+            ).first()
+            db.session.delete(test_tag)
+            db.session.commit()
+
+
+    def test_manage_tags(self):
+        #check permissions first
+        response = self.app.get('/manage_tags')
+
+        self.assertEqual(response.status_code, 401)
+
+        self.login_as_admin()
+
+        #create a test tag
+        test_tag_name = 'Test-san'
+        self.create_test_tag(test_tag_name)
+
+        #check for presence on page
+        response = self.app.get('/manage_tags')
+
+        self.assertEqual(response.status_code, 200)
+
+        self.assertIn(test_tag_name.encode('utf-8'), response.data)
+
+        #remove the test tag
+        self.remove_test_tag(test_tag_name)
+        
+
+    def test_view_post_valid_id(self):
+        self.login_as_admin()
 
         # Test creating a new post
         response = self.app.post('/create_post', data={
@@ -52,19 +103,77 @@ class TestWebBlog(unittest.TestCase):
         self.assertIn(b'Test Post', response.data) # Check if the title is present
         self.assertIn(b'This is a test content', response.data) # Check if the content is present
 
+        self.logout_user()
+
     def test_view_post_invalid_id(self):
         #Test invalid post ID
         response = self.app.get('/view_post/9999') # Required: ID that does not exist
         self.assertEqual(response.status_code, 404) # Should throw 404 if not in db
 
-    def test_create_post(self):
+    def test_delete_tag(self):
+        # Create a test tag to delete
+        test_tag_name = 'Test-san'
+
+        self.create_test_tag(test_tag_name)
+
+        # Test without permission
+        with app.app_context():
+            tag = Tag.query.filter_by(name=test_tag_name).first()
+
+        response = self.app.post(f'/delete_tag/{tag.id}')
+
+        self.assertEqual(response.status_code, 401)
+
         # Login
-        response = self.app.post('/login', data={
-            'username': 'admin',
-            'password': 'password'
+        self.login_as_admin()
+
+        # Test with permission
+        with app.app_context():
+            tag = Tag.query.filter_by(name=test_tag_name).first()
+
+        response = self.app.post(f'/delete_tag/{tag.id}')
+
+        self.assertEqual(response.status_code, 204)
+
+        # Test with missing tag
+        response = self.app.post(f'/delete_tag/9999')
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_create_tag(self):
+        # Test creating without permission
+        test_tag_name = 'Test-san'
+        response = self.app.post('/create_tag', data={
+            'tag_name': test_tag_name
         })
 
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 401)
+
+        # Login
+        self.login_as_admin()
+
+        # Test creating a new tag
+        response = self.app.post('/create_tag', data={
+            'tag_name': test_tag_name
+        })
+
+        self.assertEqual(response.status_code, 201)
+
+        # Check if the tag was added
+        with app.app_context():
+            tag = Tag.query.filter_by(name=test_tag_name).first()
+            self.assertIsNotNone(tag) # Ensure it exists
+            self.assertEqual(tag.name, test_tag_name)
+
+        # Remove the test tag
+        self.remove_test_tag(test_tag_name)
+
+        # Logout
+        self.logout_user()
+
+    def test_create_post(self):
+        # Login
+        self.login_as_admin()
 
         # Test creating a new post
         response = self.app.post('/create_post', data={
@@ -82,25 +191,18 @@ class TestWebBlog(unittest.TestCase):
             self.assertEqual(post.content, 'This is a test content.')
         
         # Logout
-        response = self.app.get('/logout')
-        self.assertEqual(response.status_code, 302)
+        self.logout_user()
 
     def test_debug_posts(self):
         # Login
-        response = self.app.post('/login', data={
-            'username': 'admin',
-            'password': 'password'
-        })
-
-        self.assertEqual(response.status_code, 302)
+        self.login_as_admin()
 
         # Test accessing the debug posts route
         response = self.app.get('/debug_posts')
         self.assertEqual(response.status_code, 200)  # Ensure the page loads successfully
 
         # Logout
-        response = self.app.get('/logout')
-        self.assertEqual(response.status_code, 302)
+        self.logout_user()
 
     def test_base(self):
         response = self.app.get('/')

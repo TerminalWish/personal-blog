@@ -28,6 +28,12 @@ class Post(db.Model):
     def __repr__(self):
         return f'<Post {self.title}>'
 
+# Many to many table to bridge posts and tags
+class PostTags(db.Model):
+    __tablename__ = 'post_tags'
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), primary_key=True)
+    tag_id = db.Column(db.Integer, db.ForeignKey('tags.id'), primary_key=True)
+
 # Role model
 class Role(db.Model):
     __tablename__ = 'roles'
@@ -36,6 +42,18 @@ class Role(db.Model):
 
     def __repr__(self):
         return f'<Role {self.name}>'
+    
+# Tag model
+class Tag(db.Model):
+    __tablename__ = 'tags'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+
+    # Relationship to link tags to posts
+    posts = db.relationship('Post', secondary='post_tags', backref='tags')
+
+    def __repr__(self):
+        return f'<Tag {self.name}>'
 
 # User Loader
 class User(UserMixin, db.Model):
@@ -136,6 +154,75 @@ def delete_post(post_id):
         return redirect(url_for('home'))
     else:
         flash('You do not have permission to delete this post.', 'danger')
+
+@app.route('/manage_tags')
+@login_required
+def manage_tags():
+    if not current_user.is_admin:
+        flash('You do not have permission to manage tags.', 'danger')
+        return redirect(url_for('home'), 401)
+    
+    with app.app_context():
+            tags = db.session.execute(
+                            db.select(Tag)
+                        ).scalars().all()
+            
+    return render_template('manage_tags.html', tags=tags), 200
+    
+@app.route('/delete_tag/<int:tag_id>', methods=['POST'])
+@login_required
+def delete_tag(tag_id):
+    if not current_user.is_admin:
+        flash('You do not have permission to delete tags.', 'danger')
+        return redirect(url_for('home'), 401)
+    
+    with app.app_context():
+        tag = db.session.get(Tag, tag_id)
+        if tag:
+            db.session.delete(tag)
+            db.session.commit()
+            flash('Tag deleted sucessfully!', 'success')
+            with app.app_context():
+                tags = db.session.execute(
+                                db.select(Tag)
+                            ).scalars().all()
+            return render_template('manage_tags.html', tags=tags), 204
+        flash('Tag not found', 'danger')
+        with app.app_context():
+            tags = db.session.execute(
+                            db.select(Tag)
+                        ).scalars().all()
+        return render_template('manage_tags.html', tags=tags), 404
+
+@app.route('/create_tag', methods=['POST'])
+@login_required
+def create_tag():
+    if not current_user.is_admin:
+        flash('You do not have permission to create tags.', 'danger')
+        return redirect(url_for('home'), 401)
+    
+    if request.method == 'POST':
+
+        tag_name = request.form['tag_name']
+
+        with app.app_context():
+            tag = db.session.scalars(
+                    db.select(Tag).filter_by(name=tag_name).limit(1)
+                ).first()
+            if tag:
+                flash('Tag already exists.', 'danger')
+            else:
+                new_tag = Tag(name=tag_name)
+                db.session.add(new_tag)
+                db.session.commit()
+                flash('Tag created successfully!', 'success')
+
+        with app.app_context():
+            tags = db.session.execute(
+                            db.select(Tag)
+                        ).scalars().all()
+            
+        return render_template('manage_tags.html', tags=tags), 201
 
 @app.route('/debug_posts')
 @login_required
