@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Tags - The Wishmaster's Codex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        body {
+            font-family: 'Garamond', serif; /* Whimsical font for fantasy feel */
+            background-color: #f0f8ff; /* Light background for a dreamy effect */
+            color: #333;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            color: #741003; /* Rich brown color */
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: flex-end; /* Aligns the navbar items to the right */
+            margin-bottom: 20px;
+        }
+
+        .navbar a {
+            text-decoration: none;
+            color: #741003; /* Matching link color */
+            font-weight: bold;
+            margin-left: 20px;
+        }
+
+        .tag-card {
+            display: inline-block;
+            border: 2px solid #741003; /* Tag border color */
+            border-radius: 10px; /* Rounded corners */
+            padding: 15px;
+            margin: 10px;
+            cursor: pointer; /* Pointer cursor on hover */
+            transition: transform 0.3s; /* Smooth scaling on hover */
+        }
+
+        .tag-card:hover {
+            transform: scale(1.05); /* Scale effect on hover */
+        }
+
+        .tag-details {
+            display: none; /* Initially hidden */
+            transition: all 0.3s; /* Smooth transition */
+        }
+
+        .active {
+            display: block; /* Show details when active */
+            border: 3px solid #741003; /* Darker border for active tag */
+            padding: 20px; /* Larger padding for expanded view */
+        }
+
+        .create-tag-form {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center; /* Center the form */
+            align-items: center; /* Center the items vertically */
+        }
+
+        .create-tag-form input[type="text"] {
+            padding: 10px;
+            margin-right: 10px; /* Space between input and button */
+            border: 1px solid #741003; /* Matching border color */
+            border-radius: 5px; /* Rounded corners */
+        }
+
+        .create-tag-form input[type="submit"] {
+            background-color: #741003; /* Matching background color */
+            color: white; /* White text */
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px; /* Rounded corners */
+            cursor: pointer; /* Pointer cursor on hover */
+            font-weight: bold;
+        }
+
+        .create-tag-form input[type="submit"]:hover {
+            background-color: #570c02; /* Darker shade on hover */
+        }
+
+        .delete-tag-button {
+            background-color: #741003; /* A contrasting color for visibility */
+            color: white; /* White text */
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px; /* Rounded corners */
+            cursor: pointer; /* Pointer cursor on hover */
+            font-weight: bold;
+            margin-top: 10px; /* Space above the button */
+            display: block; /* Ensure it's displayed as a block element */
+            width: 100%; /* Full width for better usability */
+        }
+
+        .delete-tag-button:hover {
+            background-color: #570c02; /* Darker shade on hover */
+        }
+
+    </style>
+</head>
+<body>
+    <h1>The Wishmaster's Codex</h1>
+    
+    <div class="navbar">
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('logout') }}">Logout</a>
+            {% if current_user.is_admin %}
+                <a href="{{ url_for('create_post') }}">Create Post</a>
+                <a href="{{ url_for('manage_tags') }}">Manage Tags</a>
+            {% endif %}
+        {% else %}
+            <a href="{{ url_for('login') }}">Login</a>
+        {% endif %}
+    </div>
+
+    <div class="create-tag-form">
+        <form action="{{ url_for('create_tag') }}" method="POST">
+            <input type="text" name="tag_name" placeholder="Enter new tag name" required>
+            <input type="submit" value="Create Tag">
+        </form>
+    </div>
+
+    <div class="tags-container">
+        {% for tag in tags %}
+            <div class="tag-card" onclick="toggleTag('{{ tag.name }}', '{{ tag.id }}')">
+                {{ tag.name }}
+            </div>
+        {% endfor %}
+    </div>
+
+    <div id="tag-details" class="tag-details"></div>
+
+    <script>
+        function toggleTag(tagName, tagId) {
+            const tagDetailsDiv = document.getElementById('tag-details');
+            if (tagDetailsDiv.classList.contains('active')) {
+                tagDetailsDiv.classList.remove('active');
+                tagDetailsDiv.innerHTML = ''; // Clear previous content
+            } else {
+                tagDetailsDiv.classList.add('active');
+                tagDetailsDiv.innerHTML = `<h2>${tagName}</h2>
+                                           <input type="text" id="tag-name" value="${tagName}" placeholder="Tag Name">
+                                           <form action="/delete_tag/${tagId}" method="POST">
+                                               <input type="submit" class="delete-tag-button" value="Delete Tag">
+                                           </form>`;
+            }
+        }
+    </script>
+</body>
+</html>
