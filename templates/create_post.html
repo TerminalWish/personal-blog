@@ -9,11 +9,11 @@
             font-family: Arial, sans-serif;
             margin: 20px;
             padding: 20px;
-            background-color: #f0f0f0;
+            background-color: #f0f8ff;
         }
 
         h1 {
-            color: #333;
+            color: #741003;
             text-align: center;
         }
 
@@ -21,28 +21,30 @@
             max-width: 600px;
             margin: auto;
             padding: 20px;
-            background-color: white;
+            background-color: #fff;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         label {
+            color: #741003; /* Rich brown color */
             font-weight: bold;
             margin-top: 10px;
             display: block;
         }
 
         input[type="text"], textarea, input[type="date"] {
+            font-family: Arial, sans-serif;
             width: 100%;
             padding: 10px;
             margin-top: 5px;
-            border: 1px solid #ccc;
+            border: 1px solid #741003;
             border-radius: 4px;
             box-sizing: border-box;
         }
 
         input[type="submit"] {
-            background-color: #007bff;
+            background-color: #741003;
             color: white;
             padding: 10px 15px;
             border: none;
@@ -54,7 +56,7 @@
         }
 
         input[type="submit"]:hover {
-            background-color: #0056b3;
+            background-color: #740303;
         }
 
         .message {
@@ -67,6 +69,19 @@
             color: red;
             text-align: center;
             margin-top: 15px;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center; /* Center the back link */
+            margin-top: 20px;
+            text-decoration: none;
+            color: #741003; /* Matching color */
+            font-weight: bold;
+        }
+
+        .back-link:hover {
+            text-decoration: underline; /* Underline on hover */
         }
     </style>
 </head>
@@ -95,5 +110,7 @@
           {% endif %}
         {% endwith %}
     </div>
+
+    <a href="{{ url_for('home') }}" class="back-link">Back to Home</a>
 </body>
 </html>
