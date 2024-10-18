@@ -34,6 +34,10 @@ class PostTags(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), primary_key=True)
     tag_id = db.Column(db.Integer, db.ForeignKey('tags.id'), primary_key=True)
 
+    # Useful for debugging
+    def __repr__(self):
+        return f'<Post {self.post_id}, {self.tag_id}>'
+
 # Role model
 class Role(db.Model):
     __tablename__ = 'roles'
@@ -110,7 +114,27 @@ def view_post(post_id):
     post = db.session.get(Post, post_id)
     if post is None:
         abort(404)
-    return render_template('view_post.html', post=post)
+
+    # Fetch associated tags
+    with app.app_context():
+        post_tags = db.session.execute(
+            db.select(PostTags).filter_by(post_id=post.id)
+        ).scalars().all()
+
+    # Get the tag ids
+    tag_ids = [tag.tag_id for tag in post_tags]
+
+
+    # Get tag names
+    tags = []
+    with app.app_context():
+        for tag in tag_ids:
+            tag_name = db.session.execute(
+                db.select(Tag).filter_by(id=tag)
+            ).scalar_one()
+            tags.append(tag_name)
+
+    return render_template('view_post.html', post=post, tags=tags)
 
 
 ### Private Routing
@@ -122,6 +146,9 @@ def create_post():
         post_title = request.form['title']
         post_content = request.form['content']
         date_string = request.form['date']
+        
+        # Retrieve the tags string and split it into a list
+        selected_tags = request.form['tags'].split(',')  # Split the comma-separated string into a list
 
         # Edit content to preserve formatting using html
         post_content = post_content.replace('\n', '<br>') # Replace new lines
@@ -133,6 +160,13 @@ def create_post():
 
         db.session.add(new_post)
         db.session.commit()
+
+        # Associate selected tags with the post
+        for tag_id in selected_tags:
+            post_tag = PostTags(post_id=new_post.id, tag_id=tag_id)
+            db.session.add(post_tag)
+            db.session.commit()
+
         flash('Post created successfully!')
 
         return redirect(url_for('home')) #return to the home page
@@ -153,7 +187,20 @@ def delete_post(post_id):
         abort(404)
     
     if current_user.is_admin:
+
+        # Delete relationship entries
+        with app.app_context():
+            post_tags = db.session.execute(
+                db.select(PostTags).
+                filter_by(post_id=post.id)
+            ).scalars().all()
+
+        for post_tag in post_tags:
+            db.session.delete(post_tag)
+
+        # Delete post
         db.session.delete(post)
+
         db.session.commit()
         flash('Post deleted successfully!', 'success')
         return redirect(url_for('home'))

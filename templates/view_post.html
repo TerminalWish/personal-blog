@@ -40,6 +40,16 @@
             margin-bottom: 20px;
         }
 
+        .tag-card {
+            display: inline-block;
+            border: 2px solid #741003; /* Tag border color */
+            border-radius: 10px; /* Rounded corners */
+            padding: 5px 10px;
+            margin: 5px;
+            cursor: default; /* Not clickable */
+            transition: transform 0.3s; /* Smooth scaling on hover */
+        }
+
         .post-content {
             font-size: 1.2em;
             line-height: 1.6;
@@ -97,6 +107,13 @@
     <div class="post-container">
         <h1 class="post-title">{{ post.title }}</h1>
         <p class="post-date">Date: {{ post.date }}</p>
+        <div class="post-tags">
+            <div class="tags-container">
+                {% for tag in tags %}
+                    <div class="tag-card">{{ tag.name }}</div> <!-- Display each tag in a card -->
+                {% endfor %}
+            </div>
+        </div>
         <div class="post-content">
             {{ post.content | safe }} <!-- Render content as safe HTML -->
         </div>
