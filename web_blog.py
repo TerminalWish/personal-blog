@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from flask import Flask, render_template, redirect, url_for, flash, abort, request
+from flask import Flask, jsonify, render_template, redirect, url_for, flash, abort, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 
@@ -137,8 +137,13 @@ def create_post():
 
         return redirect(url_for('home')) #return to the home page
 
+    with app.app_context():
+        all_tags = db.session.execute(
+            db.select(Tag)
+        ).scalars().all()
+
     today_date = datetime.today().strftime('%Y-%m-%d')  # Get today's date in YYYY-MM-DD format
-    return render_template('create_post.html', today_date=today_date)
+    return render_template('create_post.html', today_date=today_date, all_tags=all_tags)
 
 @app.route('/delete_post/<int:post_id>', methods=['POST'])
 @login_required
@@ -168,7 +173,23 @@ def manage_tags():
                         ).scalars().all()
             
     return render_template('manage_tags.html', tags=tags), 200
+
+@app.route('/fetch_tags', methods=['GET'])
+@login_required
+def fetch_tags():
+    if not current_user.is_admin:
+        flash('You do not have permission to manage tags.', 'danger')
+        return redirect(url_for('home'), 401)
     
+    with app.app_context():
+            tags = db.session.execute(
+                            db.select(Tag)
+                        ).scalars().all()
+    
+    tags_list = [{'id': tag.id, 'name': tag.name} for tag in tags]
+    print(jsonify({'tags': tags_list}))
+    return jsonify({'tags': tags_list})
+
 @app.route('/delete_tag/<int:tag_id>', methods=['POST'])
 @login_required
 def delete_tag(tag_id):
@@ -184,14 +205,15 @@ def delete_tag(tag_id):
             flash('Tag deleted sucessfully!', 'success')
             with app.app_context():
                 tags = db.session.execute(
-                                db.select(Tag)
-                            ).scalars().all()
+                            db.select(Tag)
+                        ).scalars().all()
             return render_template('manage_tags.html', tags=tags), 204
         flash('Tag not found', 'danger')
         with app.app_context():
             tags = db.session.execute(
                             db.select(Tag)
                         ).scalars().all()
+        #return Response(redirect(url_for('manage_tags')), status= 404)
         return render_template('manage_tags.html', tags=tags), 404
 
 @app.route('/create_tag', methods=['POST'])
@@ -203,14 +225,22 @@ def create_tag():
     
     if request.method == 'POST':
 
-        tag_name = request.form['tag_name']
-
+        if request.is_json:
+            data = request.get_json()
+            tag_name = data.get('tag_name')
+        else:
+            tag_name = request.form['tag_name']
+        
         with app.app_context():
             tag = db.session.scalars(
                     db.select(Tag).filter_by(name=tag_name).limit(1)
                 ).first()
             if tag:
                 flash('Tag already exists.', 'danger')
+                tags = db.session.execute(
+                            db.select(Tag)
+                        ).scalars().all()
+                return render_template('manage_tags.html', tags=tags), 409
             else:
                 new_tag = Tag(name=tag_name)
                 db.session.add(new_tag)
