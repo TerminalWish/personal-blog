@@ -150,6 +150,9 @@ def create_post():
         # Retrieve the tags string and split it into a list
         selected_tags = request.form['tags'].split(',')  # Split the comma-separated string into a list
 
+        # Filter for empty tags (such as when no tags are applied)
+        selected_tags = [tag for tag in selected_tags if tag]
+
         # Edit content to preserve formatting using html
         post_content = post_content.replace('\n', '<br>') # Replace new lines
 
@@ -160,6 +163,8 @@ def create_post():
 
         db.session.add(new_post)
         db.session.commit()
+
+        print(selected_tags)
 
         # Associate selected tags with the post
         for tag_id in selected_tags:
@@ -179,14 +184,21 @@ def create_post():
     today_date = datetime.today().strftime('%Y-%m-%d')  # Get today's date in YYYY-MM-DD format
     return render_template('create_post.html', today_date=today_date, all_tags=all_tags)
 
-@app.route('/delete_post/<int:post_id>', methods=['POST'])
+@app.route('/edit_post/<int:post_id>', methods=['GET', 'POST'])
 @login_required
-def delete_post(post_id):
+def edit_post(post_id):
     post = db.session.get(Post, post_id)
     if post is None:
         abort(404)
-    
-    if current_user.is_admin:
+
+    if request.method == 'POST':
+        # Update the post attributes with new values from the form
+        post.title = request.form['title']
+        post.content = request.form['content']
+        post.date = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
+
+        # Retrieve the tags string and split it into a list
+        selected_tags = [int(tag) for tag in request.form['tags'].split(',') if tag.strip()]
 
         # Delete relationship entries
         with app.app_context():
@@ -194,18 +206,69 @@ def delete_post(post_id):
                 db.select(PostTags).
                 filter_by(post_id=post.id)
             ).scalars().all()
+        
+        post_tag_tag_ids = []
+        for post_tag in post_tags:
+            post_tag_tag_ids.append(post_tag.tag_id)
+
+        print(selected_tags, post_tag_tag_ids)
+        print(post_tag_tag_ids not in selected_tags)
 
         for post_tag in post_tags:
-            db.session.delete(post_tag)
+            if post_tag not in selected_tags:
+                db.session.delete(post_tag)
+            else:
+                print("tried to remove?")
+                selected_tags.remove(post_tag)
+     
+        # Associate selected tags with the post
+        for tag_id in selected_tags:
+            post_tag = PostTags(post_id=post_id, tag_id=tag_id)
+            db.session.add(post_tag)
 
-        # Delete post
-        db.session.delete(post)
-
+        # Commit the changes to the database
         db.session.commit()
-        flash('Post deleted successfully!', 'success')
-        return redirect(url_for('home'))
-    else:
+
+        flash('Post updated successfully!', 'success')
+        return redirect(url_for('view_post', post_id=post.id))  # Redirect to the updated post
+
+    # If GET request, render the edit post form pre-filled with current post data
+    with app.app_context():
+        all_tags = db.session.execute(
+            db.select(Tag)
+        ).scalars().all()
+
+    return render_template('edit_post.html', post=post, all_tags=all_tags)
+
+
+@app.route('/delete_post/<int:post_id>', methods=['POST'])
+@login_required
+def delete_post(post_id):
+    post = db.session.get(Post, post_id)
+    if post is None:
+        abort(404)
+    
+    if not current_user.is_admin:
         flash('You do not have permission to delete this post.', 'danger')
+        return redirect(url_for('home'), 401)
+    
+    # Delete relationship entries
+    with app.app_context():
+        post_tags = db.session.execute(
+            db.select(PostTags).
+            filter_by(post_id=post.id)
+        ).scalars().all()
+
+    for post_tag in post_tags:
+        db.session.delete(post_tag)
+
+    # Delete post
+    db.session.delete(post)
+
+    db.session.commit()
+    flash('Post deleted successfully!', 'success')
+    return redirect(url_for('home'))
+        
 
 @app.route('/manage_tags')
 @login_required

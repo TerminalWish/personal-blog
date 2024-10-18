@@ -10,4 +10,5 @@ This is a simple blog web application that allows* the admin to create, edit, an
 - Post creation page with storage to a database
 - Post viewing page to present a posts content to the user
 - Post deletion option to allow admin to delete posts
+- Post editing allowing admin to change title, content, date, and tags attached to post
 - A tagging system is being implemented
