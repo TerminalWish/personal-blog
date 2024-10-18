@@ -234,8 +234,28 @@ def fetch_tags():
                         ).scalars().all()
     
     tags_list = [{'id': tag.id, 'name': tag.name} for tag in tags]
-    print(jsonify({'tags': tags_list}))
+
     return jsonify({'tags': tags_list})
+
+@app.route('/fetch_posts_by_tag/<int:tag_id>')
+@login_required
+def fetch_posts_by_tag(tag_id):
+    if not current_user.is_admin:
+        flash('You do not have permission to manage tags.', 'danger')
+        return redirect(url_for('home'), 401)
+    
+    with app.app_context():
+            posts = db.session.execute(
+                db.select(Post).
+                join(PostTags).
+                where(
+                    PostTags.tag_id == tag_id
+                )
+            ).scalars().all()
+
+    post_list = [{'id': post.id, 'title': post.title} for post in posts]
+
+    return jsonify({'posts': post_list})
 
 @app.route('/delete_tag/<int:tag_id>', methods=['POST'])
 @login_required
