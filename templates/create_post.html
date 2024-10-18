@@ -234,9 +234,13 @@
         }
 
         function createTag() {
-            const newTagName = document.getElementById('new-tag-name').value;
+            const newTagName = document.getElementById('new-tag-name').value.trim(); // Trim whitespace
 
-            // AJAX call or form submission logic to add the new tag
+            if (!newTagName) {
+                alert('Tag name cannot be empty.');
+                return; // Exit if the tag name is empty
+            }
+
             fetch('/create_tag', {
                 method: 'POST',
                 headers: {
@@ -246,16 +250,21 @@
             })
             .then(response => {
                 if (response.ok) {
-                    // Clear input field and close panel
-                    document.getElementById('new-tag-name').value = '';
-                    toggleAddTagPanel();
-                    location.reload(); // Reload to get the updated list of tags
+                    document.getElementById('new-tag-name').value = ''; // Clear input field
+                    toggleAddTagPanel(); // Close the panel
+                    // Optionally update the tags displayed without reloading
+                    return response.json(); // Assuming the server returns the new tag info
                 } else {
-                    alert('Failed to create tag.');
+                    alert('Failed to create tag. Please try again.');
                 }
+            })
+            .then(data => {
+                // Here you could dynamically add the new tag to the tags container
+                // Example: addTagToContainer(data.tag);
             })
             .catch(error => console.error('Error:', error));
         }
+
 
         // Override form submission to include selected tags
         document.querySelector('form').onsubmit = function() {
@@ -263,6 +272,7 @@
             tagsInput.type = 'hidden';
             tagsInput.name = 'tags'; // The name for the tags in the form
             tagsInput.value = Array.from(selectedTags).join(','); // Join selected tag IDs
+            
             this.appendChild(tagsInput); // Append to form
         };
     </script>
