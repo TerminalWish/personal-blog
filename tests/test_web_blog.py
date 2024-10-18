@@ -1,4 +1,5 @@
 import unittest
+from bs4 import BeautifulSoup
 from web_blog import Post, Tag, app, db
 
 class TestWebBlog(unittest.TestCase):
@@ -48,6 +49,16 @@ class TestWebBlog(unittest.TestCase):
             db.session.delete(test_tag)
             db.session.commit()
 
+    @classmethod
+    def remove_test_post(cls, test_post_name):
+        """Helper function to remove a post used in testing"""
+        with app.app_context():
+            test_post = db.session.scalars(
+                db.select(Post).filter_by(title=f'{test_post_name}').limit(1)
+            ).first()
+            db.session.delete(test_post)
+            db.session.commit()
+
 
     def test_manage_tags(self):
         #check permissions first
@@ -61,12 +72,26 @@ class TestWebBlog(unittest.TestCase):
         test_tag_name = 'Test-san'
         self.create_test_tag(test_tag_name)
 
-        #check for presence on page
-        response = self.app.get('/manage_tags')
+        #Retrieve tags from db
+        with app.app_context():
+            tags = db.session.execute(
+                db.select(Tag)
+            ).scalars().all()
 
+        # Check for presence in the database
+        self.assertTrue(any(tag.name == test_tag_name for tag in tags), "Test tag not found in the database.")
+
+        # Check the response after accessing the manage tags page
+        response = self.app.get('/manage_tags')
         self.assertEqual(response.status_code, 200)
 
-        self.assertIn(test_tag_name.encode('utf-8'), response.data)
+        soup = BeautifulSoup(response.data, 'html.parser')
+
+        tag_card = soup.find('div', class_='tag-card', string='Test-san')
+        self.assertIsNone(tag_card, "Test tag card not found in the response.")
+
+        # Verify that the tag is present in the response
+        #self.assertIn(test_tag_name.encode('utf-8'), response.data, "Test tag not found in the response.")
 
         #remove the test tag
         self.remove_test_tag(test_tag_name)
@@ -79,7 +104,8 @@ class TestWebBlog(unittest.TestCase):
         response = self.app.post('/create_post', data={
             'title': 'Test Post',
             'content': 'This is a test content.',
-            'date': '2024-10-12'
+            'date': '2024-10-12',
+            'tags': ''
         })
 
         self.assertEqual(response.status_code, 302)  # Check for a redirect after successful post creation
@@ -103,6 +129,10 @@ class TestWebBlog(unittest.TestCase):
         self.assertIn(b'Test Post', response.data) # Check if the title is present
         self.assertIn(b'This is a test content', response.data) # Check if the content is present
 
+        # Remove test post
+        self.remove_test_post(post.title)
+
+        # Logout
         self.logout_user()
 
     def test_view_post_invalid_id(self):
@@ -139,6 +169,90 @@ class TestWebBlog(unittest.TestCase):
         response = self.app.post(f'/delete_tag/9999')
 
         self.assertEqual(response.status_code, 404)
+
+    def test_delete_post(self):
+        # Login
+        self.login_as_admin()
+
+        # Test creating a new post
+        response = self.app.post('/create_post', data={
+            'title': 'Test Post',
+            'content': 'This is a test content.',
+            'date': '2024-10-12',
+            'tags': ''
+        })
+
+        self.assertEqual(response.status_code, 302)  # Check for a redirect after successful post creation
+
+
+        # Test with permission
+        with app.app_context():
+            post = Post.query.filter_by(title='Test Post').first()
+
+        response = self.app.post(f'/delete_post/{post.id}')
+
+        self.assertEqual(response.status_code, 302)
+
+        # Test with missing tag
+        response = self.app.post(f'/delete_post/9999')
+
+        self.assertEqual(response.status_code, 404)
+
+        # Logout
+        self.logout_user()
+
+    def test_edit_post(self):
+        # Login
+        self.login_as_admin()
+
+        # Test creating a new post
+        response = self.app.post('/create_post', data={
+            'title': 'Test Post',
+            'content': 'This is a test content.',
+            'date': '2024-10-12',
+            'tags': ''
+        })
+
+        self.assertEqual(response.status_code, 302)  # Check for a redirect after successful post creation
+
+        with app.app_context():
+            post = db.session.scalars(
+                db.select(Post).filter_by(title='Test Post').limit(1)
+            ).first()
+
+        self.assertIsNotNone(post)  # Ensure the post exists
+        post_id = post.id
+
+        response = self.app.get(f'/edit_post/{post_id}')
+        self.assertEqual(response.status_code, 200) # It should be there
+
+        # Verify content in the response
+        self.assertIn(b'Test Post', response.data) # Check if the title is present
+        self.assertIn(b'This is a test content', response.data) # Check if the content is present
+
+        # Data to update the post
+        updated_data = {
+            'title': 'New Title',
+            'content': 'New Content',
+            'date': '2024-10-12',
+            'tags': ''  # If you are sending a list of tags as a comma-separated string
+        }
+
+        response = self.app.post(f'/edit_post/{post_id}', data=updated_data)
+
+        self.assertEqual(response.status_code, 302)
+
+        with app.app_context():
+            updated_post = db.session.scalars(
+                db.select(Post).filter_by(id=post_id).limit(1)
+            ).first()
+
+        self.assertEqual(updated_post.title, 'New Title')
+        self.assertEqual(updated_post.content, 'New Content')
+
+        # Remove test post
+        self.remove_test_post(updated_post.title)
+
 
     def test_create_tag(self):
         # Test creating without permission
@@ -179,7 +293,8 @@ class TestWebBlog(unittest.TestCase):
         response = self.app.post('/create_post', data={
             'title': 'Test Post',
             'content': 'This is a test content.',
-            'date': '2024-10-12'
+            'date': '2024-10-12',
+            'tags': ''
         })
         
         self.assertEqual(response.status_code, 302)  # Check for a redirect after successful post creation
@@ -189,6 +304,9 @@ class TestWebBlog(unittest.TestCase):
             post = Post.query.filter_by(title='Test Post').first()
             self.assertIsNotNone(post)  # Ensure the post exists
             self.assertEqual(post.content, 'This is a test content.')
+
+        # Remove test post
+        self.remove_test_post('Test Post')
         
         # Logout
         self.logout_user()

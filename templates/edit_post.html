@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create a New Post</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+            background-color: #f0f8ff;
+        }
+
+        h1 {
+            color: #741003;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: relative; /* Ensures absolutely positioned children are contained */
+        }
+
+        label {
+            color: #741003; /* Rich brown color */
+            font-weight: bold;
+            margin-top: 10px;
+            display: block;
+        }
+
+        input[type="text"], textarea, input[type="date"] {
+            font-family: Arial, sans-serif;
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #741003;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .tag-card {
+            display: inline-block;
+            border: 2px solid #741003; /* Default tag border color */
+            border-radius: 10px; /* Rounded corners */
+            padding: 15px;
+            margin: 10px;
+            cursor: pointer; /* Pointer cursor on hover */
+            transition: transform 0.3s; /* Smooth scaling on hover */
+            background-color: white; /* Background color for the card */
+        }
+
+        .tag-card.selected {
+            background-color: #741003; /* Highlight selected tag */
+            color: white; /* White text for selected tags */
+        }
+
+        input[type="submit"] {
+            background-color: #741003;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+            display: block;
+            width: 100%;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #740303;
+        }
+
+        .message {
+            color: green;
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .error {
+            color: red;
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: flex-end; /* Aligns the navbar items to the right */
+            margin-bottom: 20px;
+        }
+
+        .navbar a {
+            text-decoration: none;
+            color: #741003; /* Matching link color */
+            font-weight: bold;
+            margin-left: 20px;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center; /* Center the back link */
+            margin-top: 20px;
+            text-decoration: none;
+            color: #741003; /* Matching color */
+            font-weight: bold;
+        }
+
+        .back-link:hover {
+            text-decoration: underline; /* Underline on hover */
+        }
+
+        .add-tag-panel {
+            display: none; /* Hidden by default */
+            position: absolute; /* Position it to the right */
+            right: 10%; /* Align it to the right */
+            top: 100px; /* Align it below the tags */
+            border: 2px solid #741003; /* Border color */
+            border-radius: 10px; /* Rounded corners */
+            padding: 20px;
+            background-color: white; /* Background color for the panel */
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Shadow for depth */
+        }
+
+        .add-tag-panel label {
+            display: block; /* Block display for labels in the panel */
+            margin-bottom: 5px; /* Space between label and input */
+        }
+
+        .cancel-button {
+            background-color: #f44336; /* Red color for cancel button */
+            color: white; /* White text */
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px; /* Rounded corners */
+            cursor: pointer; /* Pointer cursor on hover */
+        }
+
+        .cancel-button:hover {
+            background-color: #c62828; /* Darker red on hover */
+        }
+
+        .create-tag-button {
+            background-color: #4CAF50; /* Green color for create button */
+            color: white; /* White text */
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px; /* Rounded corners */
+            cursor: pointer; /* Pointer cursor on hover */
+        }
+
+        .create-tag-button:hover {
+            background-color: #388E3C; /* Darker green on hover */
+        }
+
+        /* Style for the delete button */
+        .delete-post-button {
+            position: absolute; /* Position it absolutely */
+            top: 10px; /* Adjust as needed */
+            right: 10px; /* Adjust as needed */
+            background-color: transparent; /* Transparent background */
+            border: none; /* No border */
+            color: red; /* Red color */
+            font-size: 1.5em; /* Increase size for visibility */
+            cursor: pointer; /* Pointer cursor on hover */
+        }
+
+        .delete-post-button:hover {
+            color: darkred; /* Darker red on hover */
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('logout') }}">Logout</a>
+        {% else %}
+            <a href="{{ url_for('login') }}">Login</a>
+        {% endif %}
+        <a href="{{ url_for('home') }}">Home</a>
+    </div>
+
+    <div class="container">
+        <h1>Edit Post</h1>
+        {% if current_user.is_authenticated and current_user.is_admin %}
+            <button class="delete-post-button" data-url="{{ url_for('delete_post', post_id=post.id) }}" onclick="confirmDelete(this)">✖</button>
+        {% endif %}
+        
+        <form method="POST">
+            <label for="title">Title:</label>
+            <input type="text" name="title" value="{{ post.title }}" required>
+            
+            <label for="content">Content:</label>
+            <textarea name="content" rows="20" required>{{ post.content }}</textarea>
+
+            <label for="date">Date:</label>
+            <input type="date" name="date" required value="{{ post.date }}">
+            
+            <label>Tags:</label>
+            <div id="tag-container">
+                <button type="button" onclick="toggleAddTagPanel()">Add Tag</button> <!-- Button to open the panel -->
+                {% for tag in all_tags %}
+                    <div class="tag-card" onclick="toggleTag('{{ tag.id }}', this)">
+                        {{ tag.name }}
+                    </div>
+                {% endfor %}
+            </div>
+
+            <input type="submit" value="Create Post">
+
+            
+        </form>
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            <div class="message">
+            {% for message in messages %}
+              <p>{{ message }}</p>
+            {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="add-tag-panel" id="add-tag-panel">
+        <label for="new-tag-name">New Tag Name:</label>
+        <input type="text" id="new-tag-name" placeholder="Enter new tag name">
+        <button type="button" class="create-tag-button" onclick="createTag()">Create Tag</button>
+        <button type="button" class="cancel-button" onclick="toggleAddTagPanel()">Cancel</button>
+    </div>
+
+    <a href="{{ url_for('home') }}" class="back-link">Back to Home</a>
+
+    <span id="home-url" style="display: none;">{{ url_for('home') }}</span>
+
+    <script>
+        const selectedTags = new Set(); // To keep track of selected tags
+
+        function toggleTag(tagId, element) {
+            // Toggle selection state
+            if (selectedTags.has(tagId)) {
+                selectedTags.delete(tagId);
+                element.classList.remove('selected'); // Remove selected class
+            } else {
+                selectedTags.add(tagId);
+                element.classList.add('selected'); // Add selected class
+            }
+        }
+
+        function toggleAddTagPanel() {
+            const panel = document.getElementById('add-tag-panel');
+            panel.style.display = panel.style.display === 'none' || panel.style.display === '' ? 'block' : 'none';
+        }
+
+        function createTag() {
+            const newTagName = document.getElementById('new-tag-name').value.trim(); // Trim whitespace
+
+            if (!newTagName) {
+                alert('Tag name cannot be empty.');
+                return; // Exit if the tag name is empty
+            }
+
+            fetch('/create_tag', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ tag_name: newTagName })
+            })
+            .then(response => {
+                if (response.ok) {
+                    document.getElementById('new-tag-name').value = ''; // Clear input field
+                    toggleAddTagPanel(); // Close the panel
+                    // Optionally update the tags displayed without reloading
+                    return response.json(); // Assuming the server returns the new tag info
+                } else {
+                    alert('Failed to create tag. Please try again.');
+                }
+            })
+            .then(data => {
+                // Here you could dynamically add the new tag to the tags container
+                // Example: addTagToContainer(data.tag);
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        function confirmDelete(button) {
+            const url = button.getAttribute('data-url');
+            const homeUrl = document.getElementById('home-url').textContent
+            fetch(url, {
+                    method: 'POST',
+            })
+            .then(response => {
+                if (response.ok) {
+                    // This URL is generated using Jinja2
+                    window.location.href = homeUrl;
+                } else {
+                    alert('Failed to delete post: ' + response.statusText);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+            
+        }
+
+        // Override form submission to include selected tags
+        document.querySelector('form').onsubmit = function() {
+            const tagsInput = document.createElement('input');
+            tagsInput.type = 'hidden';
+            tagsInput.name = 'tags'; // The name for the tags in the form
+            tagsInput.value = Array.from(selectedTags).join(','); // Join selected tag IDs
+            
+            this.appendChild(tagsInput); // Append to form
+        };
+    </script>
+</body>
+</html>
