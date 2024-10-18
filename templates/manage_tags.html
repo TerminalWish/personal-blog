@@ -117,6 +117,7 @@
         {% else %}
             <a href="{{ url_for('login') }}">Login</a>
         {% endif %}
+        <a href="{{ url_for('home') }}">Home</a>
     </div>
 
     <div class="create-tag-form">
@@ -126,30 +127,94 @@
         </form>
     </div>
 
-    <div class="tags-container">
-        {% for tag in tags %}
-            <div class="tag-card" onclick="toggleTag('{{ tag.name }}', '{{ tag.id }}')">
-                {{ tag.name }}
-            </div>
-        {% endfor %}
-    </div>
+    <div class="tags-container" id="tags-container"></div>
 
     <div id="tag-details" class="tag-details"></div>
 
     <script>
+        // Dictionary to hold tag elements
+        const tagsDictionary = {};
+    
+        // Function to populate tags
+        function populateTags(tags) {
+            const tagsContainer = document.getElementById('tags-container');
+            tagsContainer.innerHTML = ''; // Clear existing tags
+    
+            tags.forEach(tag => {
+                const tagCard = document.createElement('div');
+                tagCard.className = 'tag-card';
+                tagCard.setAttribute('onclick', `toggleTag('${tag.name}', '${tag.id}');`);
+                tagCard.textContent = tag.name;
+    
+                // Store the tag card in the dictionary
+                tagsDictionary[tag.id] = tagCard;
+    
+                // Append the tag card to the container
+                tagsContainer.appendChild(tagCard);
+            });
+        }
+    
+        // Call this function when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Example: Fetch tags from the server (you can replace this with your actual fetch call)
+            fetch('/fetch_tags') // Update with your actual endpoint
+                .then(response => response.json())
+                .then(data => {
+                    if (data && Array.isArray(data.tags)) {
+                        populateTags(data.tags); // Call populateTags with the fetched tags
+                    }
+                })
+                .catch(error => console.error('Error fetching tags:', error));
+        });
+
         function toggleTag(tagName, tagId) {
             const tagDetailsDiv = document.getElementById('tag-details');
+
+            // Clear previous content if the tag details are currently active
             if (tagDetailsDiv.classList.contains('active')) {
                 tagDetailsDiv.classList.remove('active');
                 tagDetailsDiv.innerHTML = ''; // Clear previous content
             } else {
+                // Open tag details and display the delete button
                 tagDetailsDiv.classList.add('active');
-                tagDetailsDiv.innerHTML = `<h2>${tagName}</h2>
-                                           <input type="text" id="tag-name" value="${tagName}" placeholder="Tag Name">
-                                           <form action="/delete_tag/${tagId}" method="POST">
-                                               <input type="submit" class="delete-tag-button" value="Delete Tag">
-                                           </form>`;
+                tagDetailsDiv.innerHTML = `
+                    <h2>${tagName}</h2>
+                    <form action="/delete_tag/${tagId}" method="POST" onsubmit="return deleteTag(event, this);">
+                        <input type="submit" class="delete-tag-button" value="Delete Tag">
+                    </form>
+                `;
             }
+        }
+    
+        // Modify deleteTag to update the dictionary and the DOM
+        function deleteTag(event, form) {
+            event.preventDefault();
+            event.stopPropagation();
+    
+            const tagId = form.action.split('/').pop(); // Get the tag ID
+            const deleteUrl = `/delete_tag/${tagId}`;
+    
+            fetch(deleteUrl, {
+                method: 'POST',
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Remove the tag from the DOM and the dictionary
+                    const tagCard = tagsDictionary[tagId];
+                    if (tagCard) {
+                        tagCard.remove(); // Remove the tag card from the container
+                        delete tagsDictionary[tagId]; // Remove it from the dictionary
+                    }
+
+                    // Hide the tag details div
+                    const tagDetailsDiv = document.getElementById('tag-details');
+                    tagDetailsDiv.classList.remove('active'); // Remove active class
+                    tagDetailsDiv.innerHTML = ''; // Clear previous content
+                } else {
+                    alert('Failed to delete tag: ' + response.statusText);
+                }
+            })
+            .catch(error => console.error('Error:', error));
         }
     </script>
 </body>

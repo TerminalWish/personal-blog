@@ -65,6 +65,19 @@
             background-color: #741003; /* Darker shade on hover */
         }
 
+        .navbar {
+            display: flex;
+            justify-content: flex-end; /* Aligns the navbar items to the right */
+            margin-bottom: 20px;
+        }
+
+        .navbar a {
+            text-decoration: none;
+            color: #741003; /* Matching link color */
+            font-weight: bold;
+            margin-left: 20px;
+        }
+
         .messages {
             color: red; /* Color for error messages */
             margin-top: 10px; /* Space above messages */
@@ -72,6 +85,10 @@
     </style>
 </head>
 <body>
+    <div class="navbar">
+        <a href="{{ url_for('home') }}">Home</a>
+    </div>
+
     <h1>Login</h1>
     <form method="POST">
         <label for="username">Username:</label>
