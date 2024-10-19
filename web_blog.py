@@ -88,7 +88,7 @@ def load_user(user_id):
 @app.route('/')
 def home():
     # Query all posts from the database
-    posts = Post.query.all()  # Fetch all posts
+    posts = Post.query.order_by(Post.date.desc()).all() # Fetch all posts ordered by newest date
 
     return render_template('base.html', posts=posts)
 
@@ -136,6 +136,52 @@ def view_post(post_id):
 
     return render_template('view_post.html', post=post, tags=tags)
 
+@app.route('/fetch_tags', methods=['GET'])
+def fetch_tags():
+    
+    with app.app_context():
+            tags = db.session.execute(
+                            db.select(Tag)
+                        ).scalars().all()
+    
+    tags_list = [{'id': tag.id, 'name': tag.name} for tag in tags]
+
+    return jsonify({'tags': tags_list})
+
+@app.route('/fetch_posts_by_tags', methods=['GET'])
+def fetch_posts_by_tags():
+    # Get the tag IDs from the query string
+    tag_ids = request.args.get('ids', '')  # Get the 'ids' parameter from the URL
+    if not tag_ids:
+        return jsonify({'posts': []})  # Return an empty list if no IDs are provided
+
+    # Split the comma-separated string into a list and convert to integers
+    tag_ids = [int(tag) for tag in tag_ids.split(',') if tag]
+
+    with app.app_context():
+        posts = db.session.execute(
+            db.select(Post).
+            join(PostTags).
+            where(PostTags.tag_id.in_(tag_ids)).  # Use IN to filter by multiple tag IDs
+            order_by(Post.date.desc())
+        ).scalars().all()
+
+    unique_posts = {}
+    for post in posts:
+        if post.id not in unique_posts:
+            unique_posts[post.id] = post
+
+    post_list = [{'id': post.id, 'title': post.title, 'date': post.date} for post in unique_posts.values()]
+
+    return jsonify({'posts': post_list})
+
+@app.route('/fetch_all_posts', methods=['GET'])
+def fetch_all_posts():
+    posts = Post.query.order_by(Post.date.desc()).all() # Fetch all posts ordered by newest date
+
+    post_list = [{'id': post.id, 'title': post.title, 'date': post.date} for post in posts]
+
+    return jsonify({'posts': post_list})
 
 ### Private Routing
 
@@ -283,42 +329,6 @@ def manage_tags():
                         ).scalars().all()
             
     return render_template('manage_tags.html', tags=tags), 200
-
-@app.route('/fetch_tags', methods=['GET'])
-@login_required
-def fetch_tags():
-    if not current_user.is_admin:
-        flash('You do not have permission to manage tags.', 'danger')
-        return redirect(url_for('home'), 401)
-    
-    with app.app_context():
-            tags = db.session.execute(
-                            db.select(Tag)
-                        ).scalars().all()
-    
-    tags_list = [{'id': tag.id, 'name': tag.name} for tag in tags]
-
-    return jsonify({'tags': tags_list})
-
-@app.route('/fetch_posts_by_tag/<int:tag_id>')
-@login_required
-def fetch_posts_by_tag(tag_id):
-    if not current_user.is_admin:
-        flash('You do not have permission to manage tags.', 'danger')
-        return redirect(url_for('home'), 401)
-    
-    with app.app_context():
-            posts = db.session.execute(
-                db.select(Post).
-                join(PostTags).
-                where(
-                    PostTags.tag_id == tag_id
-                )
-            ).scalars().all()
-
-    post_list = [{'id': post.id, 'title': post.title} for post in posts]
-
-    return jsonify({'posts': post_list})
 
 @app.route('/delete_tag/<int:tag_id>', methods=['POST'])
 @login_required
