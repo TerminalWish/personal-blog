@@ -186,13 +186,13 @@
                         <input type="submit" class="delete-tag-button" value="Delete Tag">
                     </form>
                 `;
-
+                
                 fetchPostsByTag(tagId);
             }
         }
 
         function fetchPostsByTag(tagId) {
-            fetch(`/fetch_posts_by_tag/${tagId}`)
+            fetch(`/fetch_posts_by_tags?ids=${tagId}`)
                 .then(response => response.json())
                 .then(data => {
                     const postsContainer = document.getElementById('posts-container');
