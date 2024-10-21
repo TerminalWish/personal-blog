@@ -24,9 +24,28 @@ class Post(db.Model):
     date = db.Column(db.Date, nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
+    # Link to comments for easy access
+    comments = db.relationship('Comment', cascade='all, delete-orphan', backref='posts', passive_deletes=True)
+
+    # Break delete relationship between post and tags when post deleted
+    post_tags = db.relationship('PostTags', cascade='all, delete-orphan', backref='post', passive_deletes=True)
+
     # Useful for debugging
     def __repr__(self):
         return f'<Post {self.title}>'
+    
+# Comment model
+class Comment(db.Model):
+    __tablename__ = 'comments'
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'))
+    title = db.Column(db.String(100), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    # Useful for debugging
+    def __repr__(self):
+        return f'<Comment {self.title}>'
 
 # Many to many table to bridge posts and tags
 class PostTags(db.Model):
@@ -55,6 +74,7 @@ class Tag(db.Model):
 
     # Relationship to link tags to posts
     posts = db.relationship('Post', secondary='post_tags', backref='tags')
+    post_tags = db.relationship('PostTags', cascade='all, delete-orphan', backref='tag', passive_deletes=True)
 
     def __repr__(self):
         return f'<Tag {self.name}>'
@@ -183,6 +203,25 @@ def fetch_all_posts():
 
     return jsonify({'posts': post_list})
 
+@app.route('/add_comment/<int:post_id>', methods=['POST'])
+def add_comment(post_id):
+    comment_title = request.form['title']
+    comment_content = request.form['content']
+
+    # Basic validation
+    if not comment_title or not comment_content:
+        flash('Title and content cannot be empty!', 'danger')
+        return redirect(url_for('view_post', post_id=post_id))
+
+    new_comment = Comment(title=comment_title, content=comment_content, post_id=post_id)
+
+    db.session.add(new_comment)
+    db.session.commit()
+
+    return redirect(url_for('view_post', post_id=post_id))
+
+
+
 ### Private Routing
 
 @app.route('/create_post', methods=['GET', 'POST'])
@@ -209,8 +248,6 @@ def create_post():
 
         db.session.add(new_post)
         db.session.commit()
-
-        print(selected_tags)
 
         # Associate selected tags with the post
         for tag_id in selected_tags:
@@ -257,9 +294,6 @@ def edit_post(post_id):
         for post_tag in post_tags:
             post_tag_tag_ids.append(post_tag.tag_id)
 
-        print(selected_tags, post_tag_tag_ids)
-        print(post_tag_tag_ids not in selected_tags)
-
         for post_tag in post_tags:
             if post_tag not in selected_tags:
                 db.session.delete(post_tag)
@@ -286,6 +320,24 @@ def edit_post(post_id):
 
     return render_template('edit_post.html', post=post, all_tags=all_tags)
 
+@app.route('/delete_comment/<int:comment_id>', methods=['POST'])
+@login_required
+def delete_comment(comment_id):
+    comment = db.session.get(Comment, comment_id)
+    if comment is None:
+        abort(404)
+
+    if not current_user.is_admin:
+        flash('You do not have permission to delete this post.', 'danger')
+        return redirect(url_for('home'), 401)
+    
+    # Save post id for redirect
+    post_id = comment.post_id
+
+    db.session.delete(comment)
+    db.session.commit()
+
+    return redirect(url_for('edit_post', post_id=post_id), 204)
 
 @app.route('/delete_post/<int:post_id>', methods=['POST'])
 @login_required
@@ -298,20 +350,20 @@ def delete_post(post_id):
         flash('You do not have permission to delete this post.', 'danger')
         return redirect(url_for('home'), 401)
     
-    # Delete relationship entries
-    with app.app_context():
-        post_tags = db.session.execute(
-            db.select(PostTags).
-            filter_by(post_id=post.id)
-        ).scalars().all()
-
-    for post_tag in post_tags:
-        db.session.delete(post_tag)
-
     # Delete post
     db.session.delete(post)
+    db.session.commit()
+
+    # This query retrieves all tags that have no associated entries in the PostTags table.
+    # It uses an outer join to include all tags, even those that do not have a corresponding
+    # post association, allowing us to identify orphaned tags (tags without posts).
+    orphaned_tags = db.session.query(Tag).outerjoin(PostTags).filter(PostTags.post_id.is_(None)).all()
+
+    for tag in orphaned_tags:
+        db.session.delete(tag)
 
     db.session.commit()
+
     flash('Post deleted successfully!', 'success')
     return redirect(url_for('home'))
         
