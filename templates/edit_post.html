@@ -157,8 +157,41 @@
             background-color: #388E3C; /* Darker green on hover */
         }
 
+        /* Comments Display Styling */
+        .comments-container {
+            max-width: 800px;
+            margin: 0 auto; /* Centering the content */
+            margin-top: 30px;
+            padding: 20px;
+            border: 2px solid #741003; /* Border color */
+            border-radius: 10px; /* Rounded corners */
+            background: #fff; /* White background */
+            
+        }
+
+        .comment {
+            margin-bottom: 15px; /* Space between comments */
+            border-bottom: 1px solid #ccc; /* Light border for separation */
+            padding-bottom: 10px; /* Space below each comment */
+            position: relative; /* Ensures absolutely positioned children are contained */
+        }
+
+        .comment h3 {
+            margin: 0; /* Remove default margin */
+            color: #741003; /* Tag color */
+        }
+
+        .comment p {
+            margin: 5px 0; /* Space between lines */
+        }
+
+        .comment-date {
+            font-size: 0.8em;
+            color: #555; /* Muted color for the date */
+        }
+
         /* Style for the delete button */
-        .delete-post-button {
+        .delete-button {
             position: absolute; /* Position it absolutely */
             top: 10px; /* Adjust as needed */
             right: 10px; /* Adjust as needed */
@@ -169,7 +202,7 @@
             cursor: pointer; /* Pointer cursor on hover */
         }
 
-        .delete-post-button:hover {
+        .delete-button:hover {
             color: darkred; /* Darker red on hover */
         }
     </style>
@@ -187,7 +220,7 @@
     <div class="container">
         <h1>Edit Post</h1>
         {% if current_user.is_authenticated and current_user.is_admin %}
-            <button class="delete-post-button" data-url="{{ url_for('delete_post', post_id=post.id) }}" onclick="confirmDelete(this)">✖</button>
+            <button class="delete-button" data-url="{{ url_for('delete_post', post_id=post.id) }}" onclick="confirmDelete(this)">✖</button>
         {% endif %}
         
         <form method="POST">
@@ -232,9 +265,25 @@
         <button type="button" class="cancel-button" onclick="toggleAddTagPanel()">Cancel</button>
     </div>
 
+    <!-- Comments Display Area -->
+    <div class="comments-container">
+        <h2>Comments</h2>
+        {% for comment in post.comments %}
+            <div class="comment">
+                {% if current_user.is_authenticated and current_user.is_admin %}
+                    <button class="delete-button" data-url="{{ url_for('delete_comment', comment_id=comment.id) }}" onclick="confirmDeleteComment(this)">✖</button>
+                {% endif %}
+                <h3>{{ comment.title }}</h3>
+                <p>{{ comment.content }}</p>
+                <p class="comment-date">Posted on: {{ comment.created_at.strftime('%Y-%m-%d') }}</p>
+            </div>
+        {% endfor %}
+    </div>
+
     <a href="{{ url_for('home') }}" class="back-link">Back to Home</a>
 
     <span id="home-url" style="display: none;">{{ url_for('home') }}</span>
+    <span id="this-url" style="display: none;">{{ url_for('edit_post', post_id=post.id) }}</span>
 
     <script>
         const selectedTags = new Set(); // To keep track of selected tags
@@ -285,6 +334,26 @@
                 // Example: addTagToContainer(data.tag);
             })
             .catch(error => console.error('Error:', error));
+        }
+
+        function confirmDeleteComment(button) {
+            const url = button.getAttribute('data-url');
+            const thisUrl = document.getElementById('this-url').textContent
+            fetch(url, {
+                    method: 'POST',
+            })
+            .then(response => {
+                if (response.ok) {
+                    // This URL is generated using Jinja2
+                    window.location.href = thisUrl;
+                } else {
+                    alert('Failed to delete comment: ' + response.statusText);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+            
         }
 
         function confirmDelete(button) {
