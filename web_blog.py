@@ -25,10 +25,7 @@ class Post(db.Model):
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
     # Link to comments for easy access
-    comments = db.relationship('Comment', cascade='all, delete-orphan', backref='posts', passive_deletes=True)
-
-    # Break delete relationship between post and tags when post deleted
-    post_tags = db.relationship('PostTags', cascade='all, delete-orphan', backref='post', passive_deletes=True)
+    comments = db.relationship('Comment', cascade='all, delete', backref='post')
 
     # Useful for debugging
     def __repr__(self):
@@ -38,7 +35,7 @@ class Post(db.Model):
 class Comment(db.Model):
     __tablename__ = 'comments'
     id = db.Column(db.Integer, primary_key=True)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'))
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete="CASCADE"))
     title = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
@@ -55,7 +52,7 @@ class PostTags(db.Model):
 
     # Useful for debugging
     def __repr__(self):
-        return f'<Post {self.post_id}, {self.tag_id}>'
+        return f'<PostTags {self.post_id}, {self.tag_id}>'
 
 # Role model
 class Role(db.Model):
@@ -74,7 +71,6 @@ class Tag(db.Model):
 
     # Relationship to link tags to posts
     posts = db.relationship('Post', secondary='post_tags', backref='tags')
-    post_tags = db.relationship('PostTags', cascade='all, delete-orphan', backref='tag', passive_deletes=True)
 
     def __repr__(self):
         return f'<Tag {self.name}>'
