@@ -15,6 +15,7 @@
 """
 
 import os
+import bcrypt
 from datetime import datetime
 from flask import Flask, jsonify, render_template, redirect, url_for, flash, abort, request
 from flask_sqlalchemy import SQLAlchemy
@@ -191,11 +192,13 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        byte_password = password.encode('utf-8')
+        
         user = db.session.scalars(
                 db.select(User).filter_by(username=username).limit(1)
             ).first()
 
-        if user and user.password_hash == password:
+        if user and bcrypt.checkpw(byte_password, user.password_hash.encode('utf-8')):
             login_user(user)
             return redirect(url_for('home'))
         flash('Invalid credentials. Please try again')
