@@ -5,11 +5,10 @@ This is a simple blog web application that allows* the admin to create, edit, an
 *not all features currently active
 
 ## Features
-- Simple homepage that displays all of the current posts
+- Simple homepage that displays all of the current posts with the option to filter posts by topic via tags
 - Authentication and permission levels for guests vs admin
 - Post creation page with storage to a database
 - Post viewing page to present a posts content to the user
-- Post deletion option to allow admin to delete posts
-- Post editing allowing admin to change title, content, date, and tags attached to post
+- Post deletion option to allow admin to delete posts, tags, or comments
+- Post editing allowing admin to change title, content, date, tags attached to post, and delete comments
 - Ability to filter posts by tag for easy browsing
-- A tagging system is being implemented
