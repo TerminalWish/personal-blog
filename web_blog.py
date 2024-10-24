@@ -193,7 +193,7 @@ def login():
         username = request.form['username']
         password = request.form['password']
         byte_password = password.encode('utf-8')
-        
+
         user = db.session.scalars(
                 db.select(User).filter_by(username=username).limit(1)
             ).first()
