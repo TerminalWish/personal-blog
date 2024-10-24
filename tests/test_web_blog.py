@@ -9,7 +9,7 @@ class TestWebBlog(unittest.TestCase):
 
         app.config['TESTING'] = True
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'  # Use an in-memory database for tests
-    
+
         with app.app_context():
             db.create_all()
 
@@ -56,7 +56,7 @@ class TestWebBlog(unittest.TestCase):
             test_post = db.session.scalars(
                 db.select(Post).filter_by(title=f'{test_post_name}').limit(1)
             ).first()
-            
+
             db.session.delete(test_post)
             db.session.commit()
 
@@ -94,7 +94,7 @@ class TestWebBlog(unittest.TestCase):
         })
 
         self.assertEqual(response.status_code, 302)
-        
+
         # Check for the updated link
         with app.app_context():
             test_post_tag = PostTags.query.filter_by(post_id=test_post.id).first()
