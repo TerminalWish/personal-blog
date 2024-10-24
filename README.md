@@ -12,3 +12,4 @@ This is a simple blog web application that allows* the admin to create, edit, an
 - Post deletion option to allow admin to delete posts, tags, or comments
 - Post editing allowing admin to change title, content, date, tags attached to post, and delete comments
 - Ability to filter posts by tag for easy browsing
+- Light analytics are being implemented, starting with a view count

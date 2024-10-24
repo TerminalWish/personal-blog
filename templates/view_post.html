@@ -19,6 +19,12 @@
             color: #741003; /* Rich brown color */
         }
 
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
         .post-container {
             max-width: 800px;
             margin: 0 auto; /* Centering the content */
@@ -168,7 +174,13 @@
 
     <div class="post-container">
         <h1 class="post-title">{{ post.title }}</h1>
-        <p class="post-date">Date: {{ post.date }}</p>
+        <div class="post-header">
+            <p class="post-date">Date: {{ post.date }}</p>
+            <p class="post-views">
+                <img src="/static/images/eye_symbol.png" alt="Views" style="width: 24px; height: 24px; vertical-align: middle;" />
+                {{ post.view_count }}
+            </p>
+        </div>
         <div class="post-tags">
             <div class="tags-container">
                 {% for tag in tags %}
