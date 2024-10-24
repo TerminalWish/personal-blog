@@ -15,10 +15,12 @@
 """
 
 import os
-import bcrypt
 from datetime import datetime
+import bcrypt
 from flask import Flask, jsonify, render_template, redirect, url_for, flash, abort, request
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import UniqueConstraint
+from flask_migrate import Migrate
 from flask_login import LoginManager, UserMixin
 from flask_login import login_user, login_required, logout_user, current_user
 
@@ -34,6 +36,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blog.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+
+# Initialize Migrate
+migrate = Migrate(app, db)
 
 ###
 #   Please note: The following classes dealing with db.Model are
@@ -59,6 +64,7 @@ class Post(db.Model): # pylint: disable=R0903
     title = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
     date = db.Column(db.Date, nullable=False)
+    view_count = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
     # Link to comments for easy access
@@ -77,7 +83,7 @@ class Comment(db.Model): # pylint: disable=R0903
 
     __tablename__ = 'comments'
     id = db.Column(db.Integer, primary_key=True)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete="CASCADE"))
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete="CASCADE", name="fk_post_id_comments"))
     title = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
@@ -98,8 +104,8 @@ class PostTags(db.Model): # pylint: disable=R0903
     """
 
     __tablename__ = 'post_tags'
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), primary_key=True)
-    tag_id = db.Column(db.Integer, db.ForeignKey('tags.id'), primary_key=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id', name="fk_post_id_posttags"), primary_key=True)
+    tag_id = db.Column(db.Integer, db.ForeignKey('tags.id', name="fk_tag_id_posttags"), primary_key=True)
 
     # Useful for debugging
     def __repr__(self):
@@ -117,6 +123,10 @@ class Role(db.Model): # pylint: disable=R0903
 
     def __repr__(self):
         return f'<Role {self.name}>'
+    
+    __table_args__= (
+        UniqueConstraint('name', name='uq_name_roles'),
+    )
 
 # Tag model
 class Tag(db.Model): # pylint: disable=R0903
@@ -135,6 +145,10 @@ class Tag(db.Model): # pylint: disable=R0903
 
     def __repr__(self):
         return f'<Tag {self.name}>'
+    
+    __table_args__= (
+        UniqueConstraint('name', name='uq_name_tags'),
+    )
 
 # User Loader
 class User(UserMixin, db.Model): # pylint: disable=R0903
@@ -145,12 +159,16 @@ class User(UserMixin, db.Model): # pylint: disable=R0903
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(128))
-    role_id = db.Column(db.Integer, db.ForeignKey('roles.id')) # Link to the Role table
+    role_id = db.Column(db.Integer, db.ForeignKey('roles.id', name="fk_role_id_users")) # Link to the Role table
 
     role = db.relationship('Role', backref='users') # Releationship to Role
 
     def __repr__(self):
         return f'<User {self.username}>'
+    
+    __table_args__= (
+        UniqueConstraint('username', name='uq_name_users'),
+    )
 
     @property
     def is_admin(self):
@@ -215,6 +233,11 @@ def view_post(post_id):
     post = db.session.get(Post, post_id)
     if post is None:
         abort(404)
+
+
+    if not current_user.is_authenticated or not current_user.is_admin:
+        post.view_count += 1
+        db.session.commit()
 
     # Fetch associated tags
     with app.app_context():
