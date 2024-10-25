@@ -15,6 +15,7 @@
 """
 
 import os
+from zoneinfo import ZoneInfo
 from datetime import datetime
 import bcrypt
 from flask import Flask, jsonify, render_template, redirect, url_for, flash, abort, request
@@ -185,6 +186,23 @@ class DailyStats(db.Model): # pylint: disable=R0903
     __table_args__= (
         UniqueConstraint('date', name='uq_date_daily_stats'),
     )
+
+# Message model
+class Message(db.Model): # pylint: disable=R0903
+    """Model for the messages table.
+       This table is used to handle creating, storing, and viewing messages
+       that anyone can send to the admin.
+    """
+    __tablename__ = 'messages'
+    id = db.Column(db.Integer, primary_key=True)
+    subject = db.Column(db.String(100), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    contact_info = db.Column(db.Text)
+    # If you're not in Arizona you might want to change this
+    timestamp = db.Column(db.DateTime, default=datetime.now(ZoneInfo("America/Phoenix")))
+
+    def __repr__(self):
+        return f'<Tag {self.subject}>'
 
 # User Loader
 class User(UserMixin, db.Model): # pylint: disable=R0903
@@ -368,6 +386,40 @@ def fetch_all_posts():
 
     return jsonify({'posts': post_list})
 
+@app.route('/message_me', methods=['GET', 'POST'])
+def message_me():
+    """Routing enabling visitors to the blog
+       to create and send messages to the admin.
+    """
+    if request.method == 'POST':
+
+        subject = request.form['subject']
+        message = request.form['message']
+        contact_info = request.form['contact_info']
+
+        message_to_send = Message(subject=subject, message=message, contact_info=contact_info)
+
+        db.session.add(message_to_send)
+        db.session.commit()
+
+        # Ensure the messages folder exists
+        messages_folder = 'messages'
+        os.makedirs(messages_folder, exist_ok=True)
+
+        # Save the message to a .txt file with the timestamp as the filename
+        timestamp_str = datetime.now(ZoneInfo("America/Phoenix")).strftime("%Y%m%d%H%M%S")  # Format timestamp
+        filename = os.path.join(messages_folder, f"{timestamp_str}.txt")
+        
+        with open(filename, 'w', encoding='utf-8') as file:
+            file.write(f"Subject: {subject}\n")
+            file.write(f"Contact Info: {contact_info}\n")
+            file.write(f"Message:\n{message}\n")
+
+        return redirect(url_for('home'))
+
+    return render_template('message_me.html')
+
+
 @app.route('/add_comment/<int:post_id>', methods=['POST'])
 def add_comment(post_id):
     """Routing allows for anyone viewing a post to add a comment
@@ -395,6 +447,41 @@ def add_comment(post_id):
 
 
 ### Private Routing
+
+@app.route('/fetch_messages', methods=['GET'])
+@login_required
+def fetch_messages():
+    """API endpoint to fetch all messages.
+       Requires admin access.
+    """
+    if not current_user.is_admin:
+        flash('You do not have permission to view messages.', 'danger')
+        return redirect(url_for('home'), 401)
+
+    messages = Message.query.order_by(Message.timestamp.desc()).all()
+
+    # Return JSON for list comprehension of all messages
+    return jsonify([{
+        'id': received_message.id,
+        'subject': received_message.subject,
+        'message': received_message.message,
+        'contact_info': received_message.contact_info,
+        'timestamp': received_message.timestamp
+    } for received_message in messages])
+
+@app.route('/message_inbox')
+@login_required
+def message_inbox():
+    """Routing to the admin message inbox.
+       This is just to authenticate the user and redirect
+       the page is populated via api endpoint when the page loads
+    """
+    if not current_user.is_admin:
+        flash('You do not have permission to view messages.', 'danger')
+        return redirect(url_for('home'), 401)
+
+    return render_template('message_inbox.html')
+
 
 @app.route('/dashboard')
 @login_required
@@ -545,8 +632,35 @@ def edit_post(post_id):
         all_tags = db.session.execute(
             db.select(Tag)
         ).scalars().all()
+        post_tag_entries = PostTags.query.filter_by(post_id=post_id).all()
+        selected_tag_ids = {entry.tag_id for entry in post_tag_entries}
 
-    return render_template('edit_post.html', post=post, all_tags=all_tags)
+    return render_template(
+        'edit_post.html',
+        post=post,
+        all_tags=all_tags,
+        selected_tag_ids=selected_tag_ids
+        )
+
+@app.route('/delete_message/<int:message_id>', methods=['POST'])
+@login_required
+def delete_message(message_id):
+    """Routing to delete a message.
+       Checks for authentication and then valid id on the message,
+       then deletes the message and returns to the inbox.
+    """
+    if not current_user.is_admin:
+        flash('You do not have permission to view messages.', 'danger')
+        return redirect(url_for('home'), 401)
+
+    message = db.session.get(Message, message_id)
+    if message is None:
+        abort(404)
+
+    db.session.delete(message)
+    db.session.commit()
+
+    return redirect(url_for('message_inbox'), 204)
 
 @app.route('/delete_comment/<int:comment_id>', methods=['POST'])
 @login_required
