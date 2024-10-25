@@ -110,6 +110,7 @@
             {% if current_user.is_admin %}
                 <a href="{{ url_for('create_post') }}">Create Post</a>
                 <a href="{{ url_for('manage_tags') }}">Manage Tags</a>
+                <a href="{{ url_for('dashboard') }}">Dashboard</a>
             {% endif %}
         {% else %}
             <a href="{{ url_for('login') }}">Login</a>

@@ -23,6 +23,8 @@ from sqlalchemy import UniqueConstraint
 from flask_migrate import Migrate
 from flask_login import LoginManager, UserMixin
 from flask_login import login_user, login_required, logout_user, current_user
+import plotly.express as px
+import plotly.graph_objects as go
 
 # Create a flask app
 app = Flask(__name__)
@@ -83,7 +85,10 @@ class Comment(db.Model): # pylint: disable=R0903
 
     __tablename__ = 'comments'
     id = db.Column(db.Integer, primary_key=True)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete="CASCADE", name="fk_post_id_comments"))
+    post_id = db.Column(
+              db.Integer,
+              db.ForeignKey('posts.id', ondelete="CASCADE", name="fk_post_id_comments")
+              )
     title = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
@@ -104,8 +109,16 @@ class PostTags(db.Model): # pylint: disable=R0903
     """
 
     __tablename__ = 'post_tags'
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id', name="fk_post_id_posttags"), primary_key=True)
-    tag_id = db.Column(db.Integer, db.ForeignKey('tags.id', name="fk_tag_id_posttags"), primary_key=True)
+    post_id = db.Column(
+              db.Integer,
+              db.ForeignKey('posts.id', name="fk_post_id_posttags"),
+              primary_key=True
+              )
+    tag_id = db.Column(
+             db.Integer,
+             db.ForeignKey('tags.id', name="fk_tag_id_posttags"),
+             primary_key=True
+             )
 
     # Useful for debugging
     def __repr__(self):
@@ -123,7 +136,7 @@ class Role(db.Model): # pylint: disable=R0903
 
     def __repr__(self):
         return f'<Role {self.name}>'
-    
+
     __table_args__= (
         UniqueConstraint('name', name='uq_name_roles'),
     )
@@ -139,15 +152,38 @@ class Tag(db.Model): # pylint: disable=R0903
     __tablename__ = 'tags'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
+    view_count = db.Column(db.Integer, default=0)
 
     # Relationship to link tags to posts
     posts = db.relationship('Post', secondary='post_tags', backref='tags')
 
     def __repr__(self):
         return f'<Tag {self.name}>'
-    
+
     __table_args__= (
         UniqueConstraint('name', name='uq_name_tags'),
+    )
+
+# Daily Stats Model
+class DailyStats(db.Model): # pylint: disable=R0903
+    """Model for the Daily Stats table.
+       Daily stats are unique sets of data organized by dates.
+       These are responsible for counting daily engagement metrics
+       to watch site trafic inside the admin dashboard
+    """
+    __tablename__ = 'daily_stats'
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Date, nullable=False, unique=True)
+    cumulative_views = db.Column(db.Integer, default=0) # Cumulative views up to this date
+    cumulative_comments = db.Column(db.Integer, default=0) # Cumulative comments up to this date
+    views = db.Column(db.Integer, default=0) # New views for this date
+    comments = db.Column(db.Integer, default=0) # New comments for this date
+
+    def __repr__(self):
+        return f'<Tag {self.name}>'
+
+    __table_args__= (
+        UniqueConstraint('date', name='uq_date_daily_stats'),
     )
 
 # User Loader
@@ -159,13 +195,15 @@ class User(UserMixin, db.Model): # pylint: disable=R0903
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(128))
-    role_id = db.Column(db.Integer, db.ForeignKey('roles.id', name="fk_role_id_users")) # Link to the Role table
+
+    # Link to the Role table
+    role_id = db.Column(db.Integer, db.ForeignKey('roles.id', name="fk_role_id_users"))
 
     role = db.relationship('Role', backref='users') # Releationship to Role
 
     def __repr__(self):
         return f'<User {self.username}>'
-    
+
     __table_args__= (
         UniqueConstraint('username', name='uq_name_users'),
     )
@@ -234,11 +272,6 @@ def view_post(post_id):
     if post is None:
         abort(404)
 
-
-    if not current_user.is_authenticated or not current_user.is_admin:
-        post.view_count += 1
-        db.session.commit()
-
     # Fetch associated tags
     with app.app_context():
         post_tags = db.session.execute(
@@ -258,6 +291,19 @@ def view_post(post_id):
             ).scalar_one()
             tags.append(tag_name)
 
+    if not current_user.is_authenticated or not current_user.is_admin:
+        # Increment the view count on posts
+        post.view_count += 1
+
+        # Increment the view count for each tag attached to the post
+        # This gets the tag objects whose ids match the ids in our list
+        tags = db.session.query(Tag).filter(Tag.id.in_(tag_ids)).all()
+
+        for tag in tags:
+            tag.view_count += 1
+
+        db.session.commit()
+
     return render_template('view_post.html', post=post, tags=tags)
 
 @app.route('/fetch_tags', methods=['GET'])
@@ -272,7 +318,7 @@ def fetch_tags():
                         db.select(Tag)
                     ).scalars().all()
 
-    tags_list = [{'id': tag.id, 'name': tag.name} for tag in tags]
+    tags_list = [{'id': tag.id, 'name': tag.name, 'view_count': tag.view_count} for tag in tags]
 
     return jsonify({'tags': tags_list})
 
@@ -349,6 +395,49 @@ def add_comment(post_id):
 
 
 ### Private Routing
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    """Routing method for the admin dashboard.
+       Here is where the admin can go to get stats about
+       their blog site.
+
+       This is for top 5 posts and tags in terms of view count
+       A pie chart for tag popularity, again by view count
+       A bar graph to display daily engagement by views and comments per day
+    """
+    if not current_user.is_admin:
+        return redirect(url_for('index')) # Redirect non-admins to the homepage
+
+    # Fetch analytics data (ex: top viewed posts/tags, daily stats)
+    top_posts = db.session.query(Post).order_by(Post.view_count.desc()).limit(5).all()
+    top_tags = db.session.query(Tag).order_by(Tag.view_count.desc()).limit(5).all()
+
+    # Fetch data for top tags chart
+    tags = db.session.query(Tag).all()
+    tag_names = [tag.name for tag in tags]
+    tag_views = [tag.view_count for tag in tags]
+
+    # Generate tag pie chart using Plotly
+    tag_popularity_figure = px.pie(
+        names = tag_names,
+        values = tag_views,
+        title = 'Popularity of Tags by Views'
+    )
+
+    # Generate html for daily engagement graph
+    daily_engagement_graph = generate_daily_engagement_graph()
+
+    tag_popularity_graph = tag_popularity_figure.to_html(full_html=False)
+
+    return render_template(
+        'dashboard.html',
+         top_posts=top_posts,
+         top_tags=top_tags,
+         tag_popularity_graph=tag_popularity_graph,
+         daily_engagement_graph=daily_engagement_graph
+         )
 
 @app.route('/create_post', methods=['GET', 'POST'])
 @login_required
@@ -621,6 +710,55 @@ def logout():
     """Routing to log the user out"""
     logout_user()
     return redirect(url_for('login'))
+
+def generate_daily_engagement_graph():
+    """Helper function used during generation of the
+       template to render during the dashboard routing.
+       This was just really a lot to bite off inside of the
+       parent method and I thought I'd hide the magic a bit
+       to keep the routing more legible.
+    """
+    # Get data from database
+    daily_stats = db.session.query(DailyStats).all()
+
+    # Populate values for the graph
+    dates = [stat.date for stat in daily_stats]
+    daily_views = [stat.views for stat in daily_stats]
+    daily_comments = [-stat.comments for stat in daily_stats] # Negative so they go down
+
+    # Make a graph object
+    daily_stats_figure = go.Figure()
+
+    # Draw Views in Green
+    daily_stats_figure.add_trace(go.Bar(
+        x=dates,
+        y=daily_views,
+        name='Views',
+        marker_color='green'
+    ))
+
+    # Draw Comments in Blue
+    daily_stats_figure.add_trace(go.Bar(
+        x=dates,
+        y=daily_comments,
+        name='Comments',
+        marker_color='blue'
+    ))
+
+    # Fix the layout a bit
+    daily_stats_figure.update_layout(
+        title='Daily Views and Comments',
+        xaxis_title='Date',
+        yaxis_title='Count',
+        barmode='overlay', # Overlay bars to avoid stacking
+        bargap=0.2,        # Gap between bars
+        yaxis={
+            'title': 'Views and Comments',
+            'autorange': True
+        }
+    )
+
+    return daily_stats_figure.to_html(full_html=False)
 
 if __name__ == "__main__":
 
