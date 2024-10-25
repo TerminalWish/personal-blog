@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wishmaster's Inbox</title>
+    <style>
+        body {
+            font-family: 'Garamond', serif;
+            background-color: #f0f8ff;
+            color: #333;
+            padding: 20px;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 20px;
+        }
+
+        .navbar a {
+            text-decoration: none;
+            color: #741003;
+            font-weight: bold;
+            margin-left: 20px;
+        }
+
+        .inbox-container {
+            width: 90%;
+            max-width: 800px;
+            margin: 2em auto;
+            padding: 2em;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #741003;
+        }
+        .message-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5em;
+        }
+        .message-card {
+            padding: 1.5em;
+            border: 2px solid #741003;
+            border-radius: 8px;
+            background-color: #f0f8ff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            position: relative; /* Ensures absolutely positioned children are contained */
+        }
+        .message-card h3 {
+            margin: 0;
+            color: #333;
+        }
+        .message-card p {
+            margin: 0.5em 0;
+        }
+
+        .message-card:hover {
+            transform: scale(1.05); /* Scale effect on hover */
+        }
+
+        .delete-button {
+            position: absolute; /* Position it absolutely */
+            top: 10px; /* Adjust as needed */
+            right: 10px; /* Adjust as needed */
+            background-color: transparent; /* Transparent background */
+            border: none; /* No border */
+            color: red; /* Red color */
+            font-size: 1.5em; /* Increase size for visibility */
+            cursor: pointer; /* Pointer cursor on hover */
+        }
+
+        .delete-button:hover {
+            color: darkred; /* Darker red on hover */
+        }
+
+        
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('logout') }}">Logout</a>
+            {% if current_user.is_admin %}
+                <a href="{{ url_for('create_post') }}">Create Post</a>
+                <a href="{{ url_for('manage_tags') }}">Manage Tags</a>
+                <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            {% endif %}
+        {% endif %}
+        <a href="{{ url_for('home') }}">Home</a>
+    </div>
+    
+    <div class="inbox-container">
+        <h2>Wishmaster's Inbox</h2>
+        <div id="message-list">
+            <!-- Messages will be loaded here by JavaScript -->
+        </div>
+    </div>
+
+    <span id="this-url" style="display: none;">{{ url_for('message_inbox') }}</span>
+
+    <script>
+        async function loadMessages() {
+            try {
+                const response = await fetch("{{ url_for('fetch_messages') }}");
+                const messages = await response.json();
+                
+                const messageList = document.getElementById('message-list');
+                messageList.innerHTML = ''; // Clear any existing content
+
+                messages.forEach(msg => {
+                    const messageCard = document.createElement('div');
+                    messageCard.classList.add('message-card');
+
+                    messageCard.innerHTML = `
+                        <button class="delete-button" data-url="/delete_message/${msg.id}" onclick="confirmDeleteMessage(this)">✖</button>
+                        <h3>${msg.subject}</h3>
+                        <p><strong>Received:</strong> ${new Date(msg.timestamp).toLocaleString()}</p>
+                        <p><strong>Contact Info:</strong> ${msg.contact_info || 'None provided'}</p>
+                        <p>${msg.message}</p>
+                    `;
+                    
+                    messageList.appendChild(messageCard);
+                });
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
+
+        function confirmDeleteMessage(button) {
+            const url = button.getAttribute('data-url');
+            const thisUrl = document.getElementById('this-url').textContent
+            fetch(url, {
+                    method: 'POST',
+            })
+            .then(response => {
+                if (response.ok) {
+                    // This URL is generated using Jinja2
+                    window.location.href = thisUrl;
+                } else {
+                    alert('Failed to delete message: ' + response.statusText);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+            
+        }
+
+        document.addEventListener('DOMContentLoaded', loadMessages);
+    </script>
+</body>
+</html>

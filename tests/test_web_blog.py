@@ -1,6 +1,6 @@
 import unittest
 from bs4 import BeautifulSoup
-from web_blog import Post, Tag, Comment, PostTags, app, db
+from web_blog import Post, Tag, Comment, PostTags, Message, app, db
 
 class TestWebBlog(unittest.TestCase):
 
@@ -42,6 +42,8 @@ class TestWebBlog(unittest.TestCase):
     @classmethod
     def remove_test_tag(cls, test_tag_name):
         """Helper function to remove a tag used in testing"""
+        if test_tag_name == "Testing":
+            return
         with app.app_context():
             test_tag = db.session.scalars(
                 db.select(Tag).filter_by(name=f'{test_tag_name}').limit(1)
@@ -61,8 +63,37 @@ class TestWebBlog(unittest.TestCase):
             db.session.commit()
 
     # Creation Tests
-    def test_add_tag_to_post(self):
+    def test_create_message(self):
 
+        #Login
+        self.login_as_admin()
+
+        # create the message
+        test_message_subject = 'test subject'
+        test_message_message = 'this is a test message'
+        test_message_contact = 'test contact #'
+        response = self.app.post('/message_me', data={
+            'subject': test_message_subject,
+            'message': test_message_message,
+            'contact_info': test_message_contact
+        })
+
+        self.assertEqual(response.status_code, 302)
+
+        with app.app_context():
+            test_message = Message.query.filter_by(subject=test_message_subject).first()
+            self.assertIsNotNone(test_message)
+            self.assertEqual(test_message_message, test_message.message)
+            self.assertEqual(test_message_contact, test_message.contact_info)
+
+        # Cleanup
+        with app.app_context():
+            db.session.delete(test_message)
+        
+        self.logout_user
+
+    def test_add_tag_to_post(self):
+        
         #Login
         self.login_as_admin()
 
@@ -145,7 +176,7 @@ class TestWebBlog(unittest.TestCase):
 
     def test_create_tag(self):
         # Test creating without permission
-        test_tag_name = 'Test-san'
+        test_tag_name = 'Tag-san'
         response = self.app.post('/create_tag', data={
             'tag_name': test_tag_name
         })
@@ -335,7 +366,7 @@ class TestWebBlog(unittest.TestCase):
 
     def test_delete_tag(self):
         # Create a test tag to delete
-        test_tag_name = 'Test-san'
+        test_tag_name = 'Tag-san'
 
         self.create_test_tag(test_tag_name)
 
@@ -567,7 +598,7 @@ class TestWebBlog(unittest.TestCase):
         self.login_as_admin()
 
         #create a test tag
-        test_tag_name = 'Test-san'
+        test_tag_name = 'Tag-san'
         self.create_test_tag(test_tag_name)
 
         #Retrieve tags from db
@@ -585,7 +616,7 @@ class TestWebBlog(unittest.TestCase):
 
         soup = BeautifulSoup(response.data, 'html.parser')
 
-        tag_card = soup.find('div', class_='tag-card', string='Test-san')
+        tag_card = soup.find('div', class_='tag-card', string='Tag-san')
         self.assertIsNone(tag_card, "Test tag card not found in the response.")
 
         # Verify that the tag is present in the response
