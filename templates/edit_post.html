@@ -240,9 +240,17 @@
             <div id="tag-container">
                 <button type="button" onclick="toggleAddTagPanel()">Add Tag</button> <!-- Button to open the panel -->
                 {% for tag in all_tags %}
-                    <div class="tag-card" onclick="toggleTag('{{ tag.id }}', this)">
+                    <div class="tag-card {% if tag.id in selected_tag_ids %}selected{% endif %}" onclick="toggleTag('{{ tag.id }}', this)">
                         {{ tag.name }}
                     </div>
+                    <!-- Preselect previously selected tags -->
+                    {% if tag.id in selected_tag_ids %}
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                toggleTag('{{ tag.id }}', document.querySelector('.tag-card.selected'));
+                            });
+                        </script>
+                    {% endif %}
                 {% endfor %}
             </div>
 

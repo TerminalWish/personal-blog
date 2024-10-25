@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message the Wishmaster</title>
+    <style>
+        body {
+            font-family: 'Garamond', serif;
+            background-color: #f0f8ff;
+            color: #333;
+            padding: 20px;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 20px;
+        }
+
+        .navbar a {
+            text-decoration: none;
+            color: #741003;
+            font-weight: bold;
+            margin-left: 20px;
+        }
+
+        .message-container {
+            width: 90%;
+            max-width: 800px;
+            margin: 2em auto;
+            padding: 2em;
+            background: #fff;
+            border: 2px solid #741003;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #741003;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-top: 1em;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 0.8em;
+            margin-top: 0.5em;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f0f8ff;
+        }
+        .send-button {
+            display: block;
+            width: 100%;
+            padding: 0.8em;
+            margin-top: 1.5em;
+            background-color: #741003;
+            color: #fff;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .send-button:hover {
+            background-color: #740303;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <a href="{{ url_for('login') }}">Login</a>
+        <a href="{{ url_for('home') }}">Home</a>
+    </div>
+    <div class="message-container">
+        <h2>Send a Message to the Wishmaster</h2>
+        <form action="{{ url_for('message_me') }}" method="POST">
+            <label for="subject">Subject</label>
+            <input type="text" id="subject" name="subject" required>
+
+            <label for="message">Message</label>
+            <textarea id="message" name="message" rows="5" required></textarea>
+
+            <label for="contact_info">Your Contact Info (optional)</label>
+            <input type="text" id="contact_info" name="contact_info" placeholder="email or phone">
+
+            <button type="submit" class="send-button">Send Message</button>
+        </form>
+    </div>
+</body>
+</html>
