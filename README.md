@@ -1,6 +1,8 @@
 # Personal Blog Web App
 
 This is a simple blog web application that allows the admin to create, edit, and manage blog posts.
+I have my own version of this deployed on Google Cloud Platform, check it out in it's current form at
+TerminalWish.com
 
 ## Features
 - Simple homepage that displays all of the current posts with the option to filter posts by topic via tags
