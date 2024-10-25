@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
+        /* Main layout for the dashboard */
+        body {
+            font-family: 'Garamond', serif;
+            background-color: #f0f8ff;
+            color: #333;
+            padding: 20px;
+        }
+
+        .dashboard-container {
+            display: flex;
+            height: 80vh; /* Full viewport height */
+            padding: 20px;
+            gap: 20px;
+        }
+        .navbar {
+            display: flex;
+            justify-content: flex-end; /* Aligns the navbar items to the right */
+            margin-bottom: 20px;
+        }
+
+        .navbar a {
+            text-decoration: none;
+            color: #741003; /* Matching link color */
+            font-weight: bold;
+            margin-left: 20px;
+        }
+    
+        /* Left panel for analytics options */
+        .analytics-panel {
+            flex: 1;
+            max-width: 200px;
+            background-color: #f7f7f7;
+            border: 2px solid #741003;
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+    
+        .analytics-option {
+            background-color: #f0f8ff;
+            border: 2px solid #741003;
+            border-radius: 10px;
+            padding: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            text-align: center;
+            color: #741003;
+        }
+    
+        .analytics-option:hover {
+            background-color: #d5e0eb;
+        }
+    
+        /* Right panel for visualizations */
+        .analytics-display {
+            flex: 3;
+            background-color: #fff;
+            border: 2px solid #741003;
+            border-radius: 10px;
+            padding: 20px;
+        }
+    
+        .analytics-section {
+            display: none; /* Hidden by default */
+        }
+    
+        .posts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+    
+        .post {
+            background: #fff;
+            border: 2px solid #741003;
+            border-radius: 10px;
+            padding: 15px;
+            transition: transform 0.3s;
+            color: #741003;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            background-color: #f0f8ff;
+            justify-content: space-between;
+        }
+
+        .tag-card {
+            display: inline-block;
+            border: 2px solid #741003;
+            border-radius: 10px;
+            padding: 8px;  /* Reduced padding */
+            margin: 5px;
+            cursor: pointer;
+            transition: transform 0.3s;
+            width: 180px;  /* Set a fixed width */
+            height: auto;  /* Make height flexible */
+            background-color: #f0f8ff;
+            font-size: 0.9em;  /* Reduce font size slightly */
+        }
+
+        .tag-card ul {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .tag-card li {
+            font-size: 0.85em;  /* Reduce font size for post titles */
+            line-height: 1.2;  /* Slightly closer line spacing */
+        }
+
+        .tag-card h3 {
+            font-size: 1.1em;  /* Scale down the tag name slightly */
+            margin-bottom: 5px;
+        }
+    
+        .post:hover, .tag-card:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('logout') }}">Logout</a>
+            {% if current_user.is_admin %}
+                <a href="{{ url_for('create_post') }}">Create Post</a>
+                <a href="{{ url_for('manage_tags') }}">Manage Tags</a>
+            {% endif %}
+        {% endif %}
+        <a href="{{ url_for('home') }}">Home</a>
+    </div>
+
+    <div class="dashboard-container">
+        <!-- Left Panel: Analytics Tool Selection -->
+        <div class="analytics-panel">
+            <div class="analytics-option" id="top-posts-option" onclick="showAnalytics('top-posts')">
+                Top Viewed Posts
+            </div>
+            <div class="analytics-option" id="top-tags-option" onclick="showAnalytics('top-tags')">
+                Top Viewed Tags
+            </div>
+            <div class="analytics-option" id="top-tags-option" onclick="showAnalytics('popular-tags')">
+                Popularity of Tags
+            </div>
+            <div class="analytics-option" id="top-tags-option" onclick="showAnalytics('daily-engagement')">
+                Daily Engagement
+            </div>
+        </div>
+
+        <!-- Right Panel: Visualization Display -->
+        <div class="analytics-display">
+            <!-- Top Posts Section -->
+            <div id="top-posts" class="analytics-section">
+                <h2>Top Viewed Posts</h2>
+                <div class="posts-container">
+                    {% for post in top_posts %}
+                    <div class="post">
+                        <h3>{{ post.title }}</h3>
+                        <p>Views: {{ post.view_count }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Top Tags Section -->
+            <div id="top-tags" class="analytics-section" style="display:none;">
+                <h2>Top Viewed Tags</h2>
+                <div class="tags-container">
+                    {% for tag in top_tags %}
+                    <div class="tag-card">
+                        <h3>{{ tag.name }}</h3>
+                        <p>Views: {{ tag.view_count }}</p>
+                        <p>Attached Posts:</p>
+                        <ul>
+                            {% for post in tag.posts %}
+                            <li>{{ post.title }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Popular Tag Section -->
+            <div id="popular-tags" class="analytics-section">
+                <h2>Tag Popularity</h2>
+                <div>
+                    {{ tag_popularity_graph|safe }}
+                </div>
+            </div>
+
+            <!-- Daily Engagement Section -->
+            <div id="daily-engagement" class="analytics-section">
+                <h2>Daily Engagement</h2>
+                <div>
+                    {{ daily_engagement_graph|safe }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showAnalytics(section) {
+            // Hide all sections
+            document.querySelectorAll('.analytics-section').forEach(el => el.style.display = 'none');
+            // Show the selected section
+            document.getElementById(section).style.display = 'block';
+        }
+    </script>
+
+</body>
+</html>

@@ -112,7 +112,7 @@
             <a href="{{ url_for('logout') }}">Logout</a>
             {% if current_user.is_admin %}
                 <a href="{{ url_for('create_post') }}">Create Post</a>
-                <a href="{{ url_for('manage_tags') }}">Manage Tags</a>
+                <a href="{{ url_for('dashboard') }}">Dashboard</a>
             {% endif %}
         {% else %}
             <a href="{{ url_for('login') }}">Login</a>
@@ -143,7 +143,8 @@
             tags.forEach(tag => {
                 const tagCard = document.createElement('div');
                 tagCard.className = 'tag-card';
-                tagCard.setAttribute('onclick', `toggleTag('${tag.name}', '${tag.id}');`);
+                tagCard.addEventListener('click', () => toggleTag(tag.name, tag.id, tag))
+                // tagCard.setAttribute('onclick', `toggleTag('${tag.name}', '${tag.id}', '${tag}'});`);
                 tagCard.textContent = tag.name;
     
                 // Store the tag card in the dictionary
@@ -167,7 +168,7 @@
                 .catch(error => console.error('Error fetching tags:', error));
         });
 
-        function toggleTag(tagName, tagId) {
+        function toggleTag(tagName, tagId, tag) {
             const tagDetailsDiv = document.getElementById('tag-details');
             
             // Clear previous content if the tag details are currently active
@@ -181,6 +182,10 @@
                 tagDetailsDiv.classList.add('active');
                 tagDetailsDiv.innerHTML = `
                     <h2>${tagName}</h2>
+                    <p class="post-views">
+                        <img src="/static/images/eye_symbol.png" alt="Views" style="width: 24px; height: 24px; vertical-align: middle;" />
+                        ${tag.view_count} <!-- Use JavaScript variable here -->
+                    </p>
                     <div id="posts-container"></div> <!-- Placeholder for posts -->
                     <form action="/delete_tag/${tagId}" method="POST" onsubmit="return deleteTag(event, this);">
                         <input type="submit" class="delete-tag-button" value="Delete Tag">
